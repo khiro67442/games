@@ -1,0 +1,708 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="color-scheme" content="light dark" />
+    <link rel="icon" href="data:," />
+    <title>ダイスローグライク</title>
+    <style>
+      :root{
+        --bg:#e9efe6; --felt:#2e6b46; --felt-deep:#1f4d31; --felt-edge:#17402a;
+        --panel:#fdfcf7; --panel2:#f3efe2; --ink:#1d241e; --ink-soft:#5a665c;
+        --line:#d8d2bd; --accent:#c8352a; --accent-ink:#fff;
+        --gold:#b8860b; --gold-bg:#fdf3d0; --gold-line:#e3c964;
+        --die:#fffdf4; --die-edge:#d9d2ba; --pip:#232323; --pip-red:#c8352a;
+        --good:#1e7a3c; --bad:#c8352a;
+        --btn:#1d241e; --btn-ink:#fdfcf7;
+        --shadow:0 10px 28px rgba(23,50,32,.22);
+        --radius:14px;
+      }
+      @media (prefers-color-scheme: dark){
+        :root{
+          --bg:#0e1510; --felt:#256040; --felt-deep:#173f27; --felt-edge:#0f2f1c;
+          --panel:#1b241d; --panel2:#232d25; --ink:#eef2e6; --ink-soft:#a7b3a4;
+          --line:#39463b; --accent:#e0493c; --gold:#e0aa3e; --gold-bg:#3a2f14; --gold-line:#8a6d21;
+          --die:#f7f2df; --die-edge:#c9c0a0; --pip:#232323; --pip-red:#c8352a;
+          --btn:#eef2e6; --btn-ink:#17211a;
+          --shadow:0 10px 28px rgba(0,0,0,.5);
+        }
+      }
+      *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
+      html,body{margin:0;padding:0;}
+      body{
+        background:var(--bg); color:var(--ink);
+        font-family:"Hiragino Maru Gothic ProN","Hiragino Sans","Noto Sans JP",system-ui,sans-serif;
+        min-height:100dvh;
+      }
+      button{font-family:inherit; cursor:pointer;}
+      .wrap{max-width:1060px; margin:0 auto; padding:14px 14px 40px;}
+
+      /* ---------- HUD ---------- */
+      .hud{display:grid; grid-template-columns:repeat(4,1fr); gap:8px; margin-bottom:10px;}
+      .stat{background:var(--panel); border:1px solid var(--line); border-radius:var(--radius); padding:8px 12px; box-shadow:0 2px 8px rgba(0,0,0,.06);}
+      .stat .label{font-size:11px; color:var(--ink-soft); letter-spacing:.06em; font-weight:700;}
+      .stat .value{font-size:22px; font-weight:900; line-height:1.15; font-variant-numeric:tabular-nums;}
+      .stat .value small{font-size:12px; font-weight:700; color:var(--ink-soft);}
+      .stat.coins .value{color:var(--gold);}
+      .progress-wrap{background:var(--panel); border:1px solid var(--line); border-radius:var(--radius); padding:10px 14px 12px; margin-bottom:12px;}
+      .progress-head{display:flex; justify-content:space-between; align-items:baseline; gap:10px; flex-wrap:wrap;}
+      .progress-head .t{font-weight:900; font-size:15px;}
+      .progress-head .n{font-variant-numeric:tabular-nums; font-weight:800; color:var(--ink-soft); font-size:14px;}
+      .progress-head .n b{color:var(--ink); font-size:18px;}
+      .bar{height:16px; border-radius:99px; background:var(--panel2); border:1px solid var(--line); overflow:hidden; margin-top:6px;}
+      .bar > div{height:100%; width:0%; border-radius:99px; background:repeating-linear-gradient(45deg,var(--accent) 0 14px,#a92a20 14px 28px); transition:width .6s cubic-bezier(.2,.9,.3,1.2);}
+      .bar.cleared > div{background:repeating-linear-gradient(45deg,#2f9e4f 0 14px,#227a3a 14px 28px);}
+      .clear-note{font-size:13px; font-weight:800; color:var(--good); margin-top:6px; min-height:18px;}
+
+      /* ---------- Table ---------- */
+      .table{
+        background:radial-gradient(ellipse at 50% 30%, var(--felt) 0%, var(--felt-deep) 78%, var(--felt-edge) 100%);
+        border-radius:22px; padding:20px 14px 18px; box-shadow:var(--shadow), inset 0 0 0 6px rgba(0,0,0,.14), inset 0 0 60px rgba(0,0,0,.28);
+        position:relative; overflow:hidden;
+      }
+      .combo-badge{
+        position:absolute; top:12px; right:14px; background:var(--gold-bg); color:var(--gold);
+        border:1.5px solid var(--gold-line); border-radius:99px; padding:4px 12px; font-weight:900; font-size:14px;
+        transform:scale(0); transition:transform .25s cubic-bezier(.2,1.6,.4,1);
+      }
+      .combo-badge.on{transform:scale(1);}
+      .combo-badge.pop{transform:scale(1.25);}
+      .dice-row{display:flex; justify-content:center; gap:clamp(6px,1.8vw,18px); padding:16px 0 6px; min-height:calc(clamp(54px,15.5vw,104px) + 22px);}
+      .die-slot{display:flex; flex-direction:column; align-items:center; gap:6px;}
+      .die{
+        width:clamp(54px,15.5vw,104px); height:clamp(54px,15.5vw,104px);
+        background:linear-gradient(145deg,#fffef9,var(--die) 55%,#efe8d0);
+        border:2px solid var(--die-edge); border-radius:19%;
+        box-shadow:0 6px 0 #b9b091, 0 12px 18px rgba(0,0,0,.35);
+        display:grid; grid-template-columns:repeat(3,1fr); grid-template-rows:repeat(3,1fr);
+        padding:11%; position:relative; user-select:none; transition:transform .15s, box-shadow .15s, outline-color .15s;
+        outline:3px solid transparent; outline-offset:2px;
+      }
+      .die .pip{width:78%; height:78%; margin:auto; border-radius:50%; background:var(--pip); box-shadow:inset 0 2px 3px rgba(0,0,0,.55); visibility:hidden;}
+      .die .pip.red{background:var(--pip-red);}
+      .die .pip.show{visibility:visible;}
+      .die.held{transform:translateY(10px); outline-color:var(--gold-line); box-shadow:0 2px 0 #b9b091, 0 5px 10px rgba(0,0,0,.3), 0 0 0 3px rgba(227,201,100,.35);}
+      .die.scoring{animation:dieGlow .45s ease;}
+      @keyframes dieGlow{0%{transform:scale(1);}40%{transform:scale(1.14) rotate(-3deg);}100%{transform:scale(1);}}
+      .die.rolling{animation:shake .12s linear infinite;}
+      @keyframes shake{0%{transform:translate(0,0) rotate(0);}25%{transform:translate(-3px,2px) rotate(-6deg);}50%{transform:translate(3px,-2px) rotate(5deg);}75%{transform:translate(-2px,-3px) rotate(-4deg);}100%{transform:translate(2px,3px) rotate(6deg);}}
+      @media (prefers-reduced-motion: reduce){ .die.rolling{animation:none;} .die.scoring{animation:none;} }
+      .die:disabled{cursor:default;}
+      .hold-label{font-size:11px; font-weight:800; color:#fdf6d8; letter-spacing:.08em; height:15px; text-shadow:0 1px 3px rgba(0,0,0,.5);}
+      .table-hint{text-align:center; color:rgba(255,250,225,.85); font-size:12.5px; font-weight:700; text-shadow:0 1px 3px rgba(0,0,0,.45); min-height:18px;}
+
+      /* ---------- Hand preview ---------- */
+      .preview{
+        margin-top:12px; background:var(--panel); border:1px solid var(--line); border-radius:var(--radius);
+        padding:12px 14px; display:flex; align-items:center; gap:14px; flex-wrap:wrap; box-shadow:0 2px 8px rgba(0,0,0,.06);
+      }
+      .preview .hand-name{font-size:21px; font-weight:900;}
+      .preview .hand-name .lv{font-size:12px; color:var(--gold); font-weight:900; vertical-align:middle;}
+      .score-formula{display:flex; align-items:center; gap:8px; font-variant-numeric:tabular-nums; margin-left:auto;}
+      .chip-box{background:#28549e; color:#fff; border-radius:9px; padding:5px 12px; font-weight:900; font-size:18px; min-width:64px; text-align:center; box-shadow:inset 0 -3px 0 rgba(0,0,0,.25);}
+      .mult-box{background:var(--accent); color:#fff; border-radius:9px; padding:5px 12px; font-weight:900; font-size:18px; min-width:52px; text-align:center; box-shadow:inset 0 -3px 0 rgba(0,0,0,.25);}
+      .formula-op{font-weight:900; font-size:17px; color:var(--ink-soft);}
+      .score-total{font-size:24px; font-weight:900; min-width:76px; text-align:right;}
+      .preview .none{color:var(--ink-soft); font-weight:700; font-size:14.5px;}
+
+      /* ---------- Actions ---------- */
+      .actions{display:flex; gap:10px; margin-top:12px; flex-wrap:wrap;}
+      .btn{
+        border:none; border-radius:13px; padding:15px 18px; font-size:16.5px; font-weight:900;
+        background:var(--btn); color:var(--btn-ink); box-shadow:0 4px 0 rgba(0,0,0,.28);
+        flex:1 1 auto; min-width:130px; transition:transform .08s, box-shadow .08s, opacity .15s;
+      }
+      .btn:active{transform:translateY(3px); box-shadow:0 1px 0 rgba(0,0,0,.28);}
+      .btn:disabled{opacity:.38; cursor:not-allowed; transform:none;}
+      .btn.roll{background:var(--felt-deep); color:#fdf6d8;}
+      .btn.play{background:var(--accent); color:#fff;}
+      .btn .sub{display:block; font-size:11.5px; font-weight:700; opacity:.75; margin-top:2px;}
+      .btn.ghost{background:var(--panel); color:var(--ink); border:1.5px solid var(--line); box-shadow:0 3px 0 rgba(0,0,0,.12); flex:0 1 auto; min-width:0; padding:15px 14px;}
+
+      /* ---------- Lower panels ---------- */
+      .cols{display:grid; grid-template-columns:1.2fr .8fr; gap:12px; margin-top:12px;}
+      @media (max-width:720px){ .cols{grid-template-columns:1fr;} .hud{grid-template-columns:repeat(2,1fr);} }
+      .panel{background:var(--panel); border:1px solid var(--line); border-radius:var(--radius); padding:12px 14px; box-shadow:0 2px 8px rgba(0,0,0,.06);}
+      .panel h3{margin:0 0 9px; font-size:14px; letter-spacing:.05em;}
+      .relic-list{display:flex; flex-wrap:wrap; gap:6px;}
+      .relic-chip{background:var(--gold-bg); border:1px solid var(--gold-line); color:var(--ink); border-radius:99px; padding:4px 11px; font-size:12.5px; font-weight:800;}
+      .empty-note{color:var(--ink-soft); font-size:13px; font-weight:600;}
+      .log{font-size:13px; line-height:1.75; max-height:172px; overflow-y:auto; font-variant-numeric:tabular-nums;}
+      .log .row{display:flex; justify-content:space-between; gap:10px; border-bottom:1px dashed var(--line); padding:2px 0;}
+      .log .row:last-child{border-bottom:none;}
+      .log .pts{font-weight:900;}
+      table.hands{width:100%; border-collapse:collapse; font-size:13px; font-variant-numeric:tabular-nums;}
+      table.hands th, table.hands td{padding:5px 6px; text-align:left; border-bottom:1px solid var(--line);}
+      table.hands td.n, table.hands th.n{text-align:right;}
+      table.hands tr.cur td{background:var(--gold-bg); font-weight:800;}
+
+      /* ---------- Float score ---------- */
+      .float-score{
+        position:absolute; left:50%; top:38%; transform:translate(-50%,-50%);
+        font-size:clamp(38px,9vw,58px); font-weight:900; color:#ffe970; pointer-events:none;
+        text-shadow:0 3px 0 #a92a20, 0 6px 18px rgba(0,0,0,.5); opacity:0; z-index:5; white-space:nowrap;
+      }
+      .float-score.show{animation:floatUp 1.15s ease forwards;}
+      @keyframes floatUp{0%{opacity:0; transform:translate(-50%,-30%) scale(.6);}18%{opacity:1; transform:translate(-50%,-50%) scale(1.15);}30%{transform:translate(-50%,-55%) scale(1);}75%{opacity:1;}100%{opacity:0; transform:translate(-50%,-110%) scale(1);}}
+      @media (prefers-reduced-motion: reduce){ .float-score.show{animation-duration:.3s;} }
+
+      /* ---------- Overlay (shop / gameover / help) ---------- */
+      .overlay{position:fixed; inset:0; background:rgba(10,16,11,.62); display:none; align-items:flex-start; justify-content:center; padding:18px 12px; overflow-y:auto; z-index:50;}
+      .overlay.open{display:flex;}
+      .sheet{background:var(--panel); color:var(--ink); border-radius:18px; max-width:760px; width:100%; padding:20px; box-shadow:var(--shadow); margin:auto 0;}
+      .sheet h2{margin:0 0 4px; font-size:24px; font-weight:900;}
+      .sheet .lead{color:var(--ink-soft); font-size:14px; font-weight:600; margin-bottom:14px; line-height:1.6;}
+      .sheet .lead b{color:var(--ink);}
+      .shop-coins{font-size:17px; font-weight:900; color:var(--gold); margin-bottom:12px;}
+      .shop-grid{display:grid; grid-template-columns:repeat(auto-fill,minmax(215px,1fr)); gap:10px;}
+      .item{border:1.5px solid var(--line); border-radius:13px; padding:12px; background:var(--panel2); display:flex; flex-direction:column; gap:5px;}
+      .item .iname{font-weight:900; font-size:15.5px;}
+      .item .idesc{font-size:12.8px; color:var(--ink-soft); line-height:1.55; flex:1;}
+      .item .tag{align-self:flex-start; font-size:10.5px; font-weight:900; letter-spacing:.05em; background:var(--panel); border:1px solid var(--line); border-radius:99px; padding:2px 9px; color:var(--ink-soft);}
+      .item .buy{border:none; border-radius:10px; padding:10px; font-weight:900; font-size:14.5px; background:var(--btn); color:var(--btn-ink);}
+      .item .buy:disabled{opacity:.4; cursor:not-allowed;}
+      .item.sold{opacity:.45;}
+      .sheet-actions{display:flex; gap:10px; margin-top:16px; flex-wrap:wrap; position:sticky; bottom:0; background:var(--panel); padding:12px 0 2px; border-top:1px solid var(--line); z-index:2;}
+      .big-result{text-align:center; padding:8px 0 2px;}
+      .big-result .rank{font-size:64px; font-weight:900; color:var(--accent); line-height:1;}
+      .big-result .rank.s{color:var(--gold);}
+      .result-grid{display:grid; grid-template-columns:repeat(3,1fr); gap:8px; margin:14px 0;}
+      .result-grid .stat{text-align:center;}
+      .help-hands{font-size:13.5px; line-height:1.9;}
+      .help-hands b{display:inline-block; min-width:110px;}
+      .howto{font-size:14px; line-height:1.85;}
+      .howto li{margin-bottom:4px;}
+      footer{margin-top:18px; text-align:center; color:var(--ink-soft); font-size:12px; font-weight:600;}
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <!-- HUD -->
+      <div class="hud">
+        <div class="stat"><div class="label">ラウンド</div><div class="value" id="hud-round">1</div></div>
+        <div class="stat"><div class="label">残りハンド</div><div class="value" id="hud-hands">4</div></div>
+        <div class="stat"><div class="label">振り直し（このハンド）</div><div class="value" id="hud-rerolls">2</div></div>
+        <div class="stat coins"><div class="label">コイン</div><div class="value" id="hud-coins">0</div></div>
+      </div>
+
+      <div class="progress-wrap">
+        <div class="progress-head">
+          <span class="t">ノルマ</span>
+          <span class="n"><b id="score-now">0</b> / <span id="score-target">300</span> 点</span>
+        </div>
+        <div class="bar" id="progress-bar"><div></div></div>
+        <div class="clear-note" id="clear-note"></div>
+      </div>
+
+      <!-- Table -->
+      <div class="table" id="table">
+        <div class="combo-badge" id="combo-badge">コンボ ×2</div>
+        <div class="float-score" id="float-score"></div>
+        <div class="dice-row" id="dice-row"></div>
+        <div class="table-hint" id="table-hint">「サイコロを振る」を押してスタート</div>
+      </div>
+
+      <!-- Hand preview -->
+      <div class="preview" id="preview">
+        <span class="none">まだ振っていません。役はここに表示されます。</span>
+      </div>
+
+      <!-- Actions -->
+      <div class="actions">
+        <button class="btn roll" id="btn-roll">🎲 サイコロを振る<span class="sub">スペースキーでもOK</span></button>
+        <button class="btn play" id="btn-play" disabled>この役で出す<span class="sub">スコア確定（Enter）</span></button>
+        <button class="btn ghost" id="btn-help">役一覧</button>
+        <button class="btn ghost" id="btn-sound">音 ON</button>
+      </div>
+
+      <!-- Lower -->
+      <div class="cols">
+        <div class="panel">
+          <h3>スコア履歴</h3>
+          <div class="log" id="log"><span class="empty-note">まだ記録がありません。</span></div>
+        </div>
+        <div class="panel">
+          <h3>所持レリック</h3>
+          <div class="relic-list" id="relic-list"><span class="empty-note">なし — ラウンドクリア後のショップで買えます</span></div>
+        </div>
+      </div>
+
+      <div class="panel" style="margin-top:12px;">
+        <h3>役と基本スコア（チップ × マルチ）</h3>
+        <div style="overflow-x:auto;">
+          <table class="hands" id="hands-table">
+            <thead><tr><th>役</th><th class="n">Lv</th><th class="n">チップ</th><th class="n">マルチ</th><th>条件</th></tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+
+      <footer>キーボード: 1〜5 = ダイスをキープ切替 / スペース = 振る・振り直し / Enter = 出す</footer>
+    </div>
+
+    <!-- SHOP -->
+    <div class="overlay" id="shop-overlay">
+      <div class="sheet">
+        <h2 id="shop-title">ラウンドクリア！</h2>
+        <div class="lead" id="shop-lead"></div>
+        <div class="shop-coins">所持コイン: <span id="shop-coins">0</span></div>
+        <div class="shop-grid" id="shop-grid"></div>
+        <div class="sheet-actions">
+          <button class="btn ghost" id="btn-shop-reroll">品揃えを変える（1コイン）</button>
+          <button class="btn play" id="btn-next-round" style="flex:1;">次のラウンドへ進む</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- GAME OVER -->
+    <div class="overlay" id="over-overlay">
+      <div class="sheet">
+        <h2 style="text-align:center;">ノルマ未達…</h2>
+        <div class="big-result"><div class="rank" id="final-rank">C</div></div>
+        <div class="result-grid">
+          <div class="stat"><div class="label">到達ラウンド</div><div class="value" id="final-round">1</div></div>
+          <div class="stat"><div class="label">総スコア</div><div class="value" id="final-score">0</div></div>
+          <div class="stat"><div class="label">最大の役</div><div class="value" id="final-best" style="font-size:16px;">—</div></div>
+        </div>
+        <div class="lead" style="text-align:center;" id="final-msg"></div>
+        <div class="sheet-actions">
+          <button class="btn play" id="btn-restart" style="flex:1;">最初からもう一度</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- HELP -->
+    <div class="overlay" id="help-overlay">
+      <div class="sheet">
+        <h2>遊び方</h2>
+        <ol class="howto">
+          <li><b>サイコロを5個振る</b> → 残したい目をタップして<b>キープ</b>、残りを振り直せます（1ハンドにつき振り直し2回まで）。</li>
+          <li>出た目で<b>役</b>が決まります。「この役で出す」で <b>チップ × マルチ</b> のスコアが入ります。</li>
+          <li>ハンドを使い切る前に<b>ノルマ</b>到達が目標。届かなければゲームオーバー。</li>
+          <li>役が連続で決まると<b>コンボ</b>が付き、そのハンドのマルチが増えます（ノーペアでリセット）。</li>
+          <li>ラウンドクリアでコイン獲得 → ショップで<b>レリック</b>（永続効果）と<b>役のレベルアップ</b>を買って、次の跳ね上がるノルマに挑みます。</li>
+        </ol>
+        <h3 style="margin:14px 0 6px;">役一覧（強い順）</h3>
+        <div class="help-hands" id="help-hands"></div>
+        <div class="sheet-actions">
+          <button class="btn play" id="btn-help-close" style="flex:1;">閉じる</button>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      "use strict";
+      /* ================= Audio ================= */
+      let audioCtx = null, soundOn = true;
+      function ac(){ if(!audioCtx){ try{ audioCtx = new (window.AudioContext||window.webkitAudioContext)(); }catch(e){} } if(audioCtx && audioCtx.state==="suspended") audioCtx.resume(); return audioCtx; }
+      function tone(freq, dur, type, vol, when){
+        if(!soundOn) return; const c = ac(); if(!c) return;
+        const t = c.currentTime + (when||0);
+        const o = c.createOscillator(), g = c.createGain();
+        o.type = type||"sine"; o.frequency.setValueAtTime(freq, t);
+        g.gain.setValueAtTime(vol||0.12, t); g.gain.exponentialRampToValueAtTime(0.001, t+dur);
+        o.connect(g); g.connect(c.destination); o.start(t); o.stop(t+dur);
+      }
+      function noiseBurst(dur, vol, when){
+        if(!soundOn) return; const c = ac(); if(!c) return;
+        const t = c.currentTime + (when||0);
+        const len = Math.max(1, Math.floor(c.sampleRate*dur));
+        const buf = c.createBuffer(1, len, c.sampleRate);
+        const d = buf.getChannelData(0);
+        for(let i=0;i<len;i++) d[i] = (Math.random()*2-1)*(1-i/len);
+        const src = c.createBufferSource(); src.buffer = buf;
+        const f = c.createBiquadFilter(); f.type="bandpass"; f.frequency.value = 1800+Math.random()*1200;
+        const g = c.createGain(); g.gain.value = vol||0.15;
+        src.connect(f); f.connect(g); g.connect(c.destination); src.start(t);
+      }
+      const sfx = {
+        click(){ tone(660, .06, "square", .05); },
+        dice(){ for(let i=0;i<5;i++) noiseBurst(.05, .16, i*.07); },
+        hold(){ tone(520, .07, "triangle", .1); },
+        ding(i){ tone(520*Math.pow(1.122, i*2), .16, "sine", .13); tone(520*Math.pow(1.122, i*2)*2, .1, "sine", .05); },
+        score(big){ [523,659,784].forEach((f,i)=>tone(f,.14,"triangle",.11,i*.06)); if(big) [1046,1318].forEach((f,i)=>tone(f,.22,"triangle",.12,.2+i*.08)); },
+        coin(){ tone(988,.09,"square",.08); tone(1318,.16,"square",.08,.08); },
+        fanfare(){ [523,659,784,1046,784,1046].forEach((f,i)=>tone(f,.2,"triangle",.12,i*.11)); },
+        fail(){ [392,330,262,196].forEach((f,i)=>tone(f,.25,"sawtooth",.07,i*.16)); }
+      };
+
+      /* ================= Hand definitions ================= */
+      // pips layout: which of 9 grid cells (0-8) are filled per face
+      const PIPS = {1:[4],2:[0,8],3:[0,4,8],4:[0,2,6,8],5:[0,2,4,6,8],6:[0,2,3,5,6,8]};
+      const HANDS = [
+        {key:"five",      name:"ファイブカード", cond:"同じ目が5つ",       baseChips:120, baseMult:12, upChips:25, upMult:2},
+        {key:"four",      name:"フォーカード",   cond:"同じ目が4つ",       baseChips:60,  baseMult:7,  upChips:20, upMult:1},
+        {key:"fullhouse", name:"フルハウス",     cond:"3つ + 2つの組",     baseChips:50,  baseMult:5,  upChips:15, upMult:1},
+        {key:"straight",  name:"ストレート",     cond:"1-2-3-4-5 / 2-3-4-5-6", baseChips:45, baseMult:5, upChips:15, upMult:1},
+        {key:"three",     name:"スリーカード",   cond:"同じ目が3つ",       baseChips:35,  baseMult:4,  upChips:12, upMult:1},
+        {key:"twopair",   name:"ツーペア",       cond:"ペアが2組",         baseChips:25,  baseMult:3,  upChips:10, upMult:1},
+        {key:"pair",      name:"ワンペア",       cond:"同じ目が2つ",       baseChips:15,  baseMult:2,  upChips:8,  upMult:1},
+        {key:"high",      name:"ノーペア",       cond:"役なし（一番大きい目だけ）", baseChips:5, baseMult:1, upChips:5, upMult:0}
+      ];
+      function handDef(key){ return HANDS.find(h=>h.key===key); }
+      function evaluate(values){
+        const counts = {};
+        values.forEach(v=>counts[v]=(counts[v]||0)+1);
+        const groups = Object.entries(counts).map(([v,c])=>({v:+v,c})).sort((a,b)=> b.c-a.c || b.v-a.v);
+        const sorted = [...values].sort((a,b)=>a-b).join(",");
+        const idxOf = vs => values.map((v,i)=> vs.includes(v)?i:-1).filter(i=>i>=0);
+        if(groups[0].c===5) return {key:"five", scoring:idxOf([groups[0].v])};
+        if(groups[0].c===4) return {key:"four", scoring:idxOf([groups[0].v])};
+        if(groups[0].c===3 && groups[1] && groups[1].c===2) return {key:"fullhouse", scoring:[0,1,2,3,4]};
+        if(sorted==="1,2,3,4,5" || sorted==="2,3,4,5,6") return {key:"straight", scoring:[0,1,2,3,4]};
+        if(groups[0].c===3) return {key:"three", scoring:idxOf([groups[0].v])};
+        if(groups[0].c===2 && groups[1] && groups[1].c===2) return {key:"twopair", scoring:idxOf([groups[0].v, groups[1].v])};
+        if(groups[0].c===2) return {key:"pair", scoring:idxOf([groups[0].v])};
+        const maxV = Math.max(...values);
+        return {key:"high", scoring:[values.indexOf(maxV)]};
+      }
+
+      /* ================= Relics ================= */
+      const RELICS = [
+        {id:"even",   name:"偶数の加護",   tag:"レリック", price:6, desc:"スコアする偶数の目1つにつき チップ+6"},
+        {id:"odd",    name:"奇数の加護",   tag:"レリック", price:6, desc:"スコアする奇数の目1つにつき チップ+6"},
+        {id:"six",    name:"シックスセンス", tag:"レリック", price:7, desc:"スコアする「6」の目1つにつき チップ+15"},
+        {id:"one",    name:"ワンの奇跡",   tag:"レリック", price:7, desc:"スコアする「1」の目1つにつき チップ+15、マルチ+1"},
+        {id:"highpip",name:"ハイローラー", tag:"レリック", price:6, desc:"スコアする「5・6」の目1つにつき チップ+8"},
+        {id:"pairmaster", name:"ペア職人", tag:"レリック", price:7, desc:"ワンペア／ツーペア／フルハウスのマルチ +2"},
+        {id:"strlord", name:"ストレートロード", tag:"レリック", price:6, desc:"ストレートのマルチ +3"},
+        {id:"biggame", name:"大物狙い", tag:"レリック", price:8, desc:"フォーカード／ファイブカードのマルチ +4"},
+        {id:"zorome", name:"ゾロ目コレクター", tag:"レリック", price:6, desc:"ペア以上の役のとき チップ+25"},
+        {id:"factory", name:"チップ工場", tag:"レリック", price:8, desc:"すべての役の基本チップ +20"},
+        {id:"lens",   name:"倍率レンズ",   tag:"レリック", price:9, desc:"すべての役のマルチ +1"},
+        {id:"reroll", name:"リロールマスター", tag:"レリック", price:7, desc:"1ハンドの振り直し回数 +1（永続）"},
+        {id:"handplus", name:"強運の手",  tag:"レリック", price:9, desc:"1ラウンドのハンド数 +1（永続）"},
+        {id:"piggy",  name:"貯金箱",      tag:"レリック", price:5, desc:"ラウンドクリア時の利息ボーナス上限が +5コイン"},
+        {id:"mint",   name:"造幣局",      tag:"レリック", price:6, desc:"ラウンド開始時に +3コイン"}
+      ];
+
+      /* ================= State ================= */
+      const S = {
+        round:1, target:300, roundScore:0, totalScore:0,
+        handsLeft:4, handsPerRound:4, rerollsLeft:2, rerollsPerHand:2,
+        coins:0, dice:[1,1,1,1,1], held:[false,false,false,false,false],
+        phase:"idle", // idle | rolled | scoring
+        combo:0, relics:[], levels:{}, log:[], bestHand:"—", bestHandRank:-1,
+        shopItems:[]
+      };
+      HANDS.forEach(h=>S.levels[h.key]=1);
+      function targetFor(round){ return Math.round((240*Math.pow(1.62, round-1) + round*90)/10)*10; }
+      function hasRelic(id){ return S.relics.includes(id); }
+
+      /* ================= Scoring ================= */
+      function calcScore(values){
+        const ev = evaluate(values);
+        const def = handDef(ev.key);
+        const lv = S.levels[ev.key];
+        let chips = def.baseChips + def.upChips*(lv-1);
+        let mult = def.baseMult + def.upMult*(lv-1);
+        if(hasRelic("factory")) chips += 20;
+        if(hasRelic("lens")) mult += 1;
+        if(hasRelic("zorome") && ev.key!=="high") chips += 25;
+        if(hasRelic("pairmaster") && ["pair","twopair","fullhouse"].includes(ev.key)) mult += 2;
+        if(hasRelic("strlord") && ev.key==="straight") mult += 3;
+        if(hasRelic("biggame") && ["four","five"].includes(ev.key)) mult += 4;
+        ev.scoring.forEach(i=>{
+          const v = values[i];
+          chips += v; // base pip value
+          if(hasRelic("even") && v%2===0) chips += 6;
+          if(hasRelic("odd") && v%2===1) chips += 6;
+          if(hasRelic("six") && v===6) chips += 15;
+          if(hasRelic("highpip") && v>=5) chips += 8;
+          if(hasRelic("one") && v===1){ chips += 15; mult += 1; }
+        });
+        const comboMult = (ev.key!=="high") ? S.combo : 0;
+        mult += comboMult;
+        return {ev, def, lv, chips, mult, total: chips*mult, comboMult};
+      }
+
+      /* ================= DOM ================= */
+      const $ = id => document.getElementById(id);
+      const diceRow = $("dice-row");
+      const dieEls = [];
+      function buildDice(){
+        diceRow.innerHTML = ""; dieEls.length = 0;
+        for(let i=0;i<5;i++){
+          const slot = document.createElement("div"); slot.className = "die-slot";
+          const die = document.createElement("button"); die.className = "die"; die.type = "button";
+          die.setAttribute("aria-label", "ダイス"+(i+1));
+          for(let p=0;p<9;p++){ const pip = document.createElement("span"); pip.className="pip"; die.appendChild(pip); }
+          const lab = document.createElement("div"); lab.className = "hold-label"; lab.textContent = "";
+          die.addEventListener("click", ()=>toggleHold(i));
+          slot.appendChild(die); slot.appendChild(lab);
+          diceRow.appendChild(slot);
+          dieEls.push({die, lab});
+        }
+      }
+      function paintDie(i){
+        const v = S.dice[i], el = dieEls[i];
+        const pips = el.die.querySelectorAll(".pip");
+        pips.forEach((p,pIdx)=>{
+          p.classList.toggle("show", PIPS[v].includes(pIdx));
+          p.classList.toggle("red", v===1 && pIdx===4);
+        });
+        el.die.classList.toggle("held", S.held[i]);
+        el.lab.textContent = S.held[i] ? "キープ中" : "";
+      }
+      function paintAllDice(){ for(let i=0;i<5;i++) paintDie(i); }
+
+      function renderHUD(){
+        $("hud-round").textContent = S.round;
+        $("hud-hands").textContent = S.handsLeft;
+        $("hud-rerolls").textContent = S.phase==="rolled" ? S.rerollsLeft : S.rerollsPerHand;
+        $("hud-coins").textContent = S.coins;
+        $("score-now").textContent = S.roundScore.toLocaleString();
+        $("score-target").textContent = S.target.toLocaleString();
+        const pct = Math.min(100, S.roundScore/S.target*100);
+        const bar = $("progress-bar");
+        bar.querySelector("div").style.width = pct + "%";
+        bar.classList.toggle("cleared", S.roundScore>=S.target);
+        $("clear-note").textContent = S.roundScore>=S.target ? "ノルマ達成！ 残りハンドはボーナス稼ぎ（超過500点ごとに+1コイン）" : "";
+        const badge = $("combo-badge");
+        badge.classList.toggle("on", S.combo>=1);
+        badge.textContent = "コンボ ×"+(S.combo+1)+" マルチ";
+        // relics
+        const rl = $("relic-list");
+        if(!S.relics.length){ rl.innerHTML = '<span class="empty-note">なし — ラウンドクリア後のショップで買えます</span>'; }
+        else rl.innerHTML = S.relics.map(id=>{ const r = RELICS.find(x=>x.id===id); return '<span class="relic-chip">'+r.name+'</span>'; }).join("");
+        // log
+        const lg = $("log");
+        if(!S.log.length) lg.innerHTML = '<span class="empty-note">まだ記録がありません。</span>';
+        else lg.innerHTML = S.log.slice().reverse().map(e=>
+          '<div class="row"><span>R'+e.round+' '+e.name+' <span style="color:var(--ink-soft)">['+e.dice.join("・")+']</span></span><span class="pts">+'+e.pts.toLocaleString()+'</span></div>').join("");
+        // hands table
+        const tb = $("hands-table").querySelector("tbody");
+        tb.innerHTML = HANDS.map(h=>{
+          const lv = S.levels[h.key];
+          const chips = h.baseChips + h.upChips*(lv-1) + (hasRelic("factory")?20:0);
+          const mult = h.baseMult + h.upMult*(lv-1) + (hasRelic("lens")?1:0);
+          return '<tr><td>'+h.name+'</td><td class="n">'+lv+'</td><td class="n">'+chips+'</td><td class="n">×'+mult+'</td><td>'+h.cond+'</td></tr>';
+        }).join("");
+        // buttons
+        const rollBtn = $("btn-roll");
+        if(S.phase==="idle"){ rollBtn.disabled = S.handsLeft<=0; rollBtn.firstChild.textContent = "🎲 サイコロを振る"; }
+        else if(S.phase==="rolled"){ rollBtn.disabled = S.rerollsLeft<=0; rollBtn.firstChild.textContent = "↻ 振り直す（残り"+S.rerollsLeft+"）"; }
+        else rollBtn.disabled = true;
+        $("btn-play").disabled = S.phase!=="rolled";
+      }
+      function renderPreview(){
+        const pv = $("preview");
+        if(S.phase==="idle"){ pv.innerHTML = '<span class="none">まだ振っていません。役はここに表示されます。</span>'; return; }
+        const r = calcScore(S.dice);
+        pv.innerHTML =
+          '<span class="hand-name">'+r.def.name+' <span class="lv">Lv.'+r.lv+'</span></span>' +
+          '<div class="score-formula"><span class="chip-box">'+r.chips+'</span><span class="formula-op">×</span>' +
+          '<span class="mult-box">'+r.mult+'</span>' + (r.comboMult? '<span class="formula-op" style="color:var(--gold)">コンボ+'+r.comboMult+'込</span>':'') +
+          '<span class="formula-op">=</span><span class="score-total">'+r.total.toLocaleString()+'</span></div>';
+        const tb = $("hands-table").querySelectorAll("tbody tr");
+        tb.forEach(tr=>tr.classList.remove("cur"));
+        const idx = HANDS.findIndex(h=>h.key===r.ev.key);
+        if(tb[idx]) tb[idx].classList.add("cur");
+      }
+      function renderAll(){ renderHUD(); renderPreview(); paintAllDice(); }
+
+      /* ================= Game flow ================= */
+      function toggleHold(i){
+        if(S.phase!=="rolled") return;
+        S.held[i] = !S.held[i];
+        sfx.hold(); paintDie(i); renderPreview();
+      }
+      function rollDice(){
+        if(S.phase==="scoring") return;
+        if(S.phase==="idle"){
+          if(S.handsLeft<=0) return;
+          S.phase = "rolled"; S.rerollsLeft = S.rerollsPerHand;
+          S.held = [false,false,false,false,false];
+          animateRoll([0,1,2,3,4]);
+        } else if(S.phase==="rolled"){
+          if(S.rerollsLeft<=0) return;
+          const targets = [0,1,2,3,4].filter(i=>!S.held[i]);
+          if(!targets.length){ sfx.click(); return; }
+          S.rerollsLeft--;
+          animateRoll(targets);
+        }
+      }
+      function animateRoll(targets){
+        sfx.dice();
+        targets.forEach(i=> dieEls[i].die.classList.add("rolling"));
+        const iv = setInterval(()=>{ targets.forEach(i=>{ S.dice[i] = 1+Math.floor(Math.random()*6); paintDie(i); }); }, 70);
+        setTimeout(()=>{
+          clearInterval(iv);
+          targets.forEach(i=>{ S.dice[i] = 1+Math.floor(Math.random()*6); dieEls[i].die.classList.remove("rolling"); paintDie(i); });
+          $("table-hint").textContent = S.rerollsLeft>0 ? "残したい目をタップでキープ → 振り直すか、そのまま出す" : "振り直し終了。この役で出そう";
+          renderAll();
+        }, 480);
+      }
+      function playHand(){
+        if(S.phase!=="rolled") return;
+        S.phase = "scoring";
+        const r = calcScore(S.dice);
+        // highlight scoring dice one by one with rising dings
+        r.ev.scoring.forEach((di, k)=>{
+          setTimeout(()=>{ dieEls[di].die.classList.add("scoring"); sfx.ding(k); setTimeout(()=>dieEls[di].die.classList.remove("scoring"), 460); }, k*170);
+        });
+        const wait = r.ev.scoring.length*170 + 200;
+        setTimeout(()=>{
+          S.roundScore += r.total; S.totalScore += r.total;
+          S.handsLeft--;
+          if(r.ev.key!=="high"){
+            const rank = HANDS.findIndex(h=>h.key===r.ev.key);
+            if(rank < S.bestHandRank || S.bestHandRank===-1 && false){}
+            if(S.bestHandRank===-1 || rank < S.bestHandRank){ S.bestHandRank = rank; S.bestHand = r.def.name; }
+            S.combo++;
+            const badge = $("combo-badge"); badge.classList.add("pop"); setTimeout(()=>badge.classList.remove("pop"), 220);
+          } else S.combo = 0;
+          S.log.push({round:S.round, name:r.def.name, dice:[...S.dice], pts:r.total});
+          const fl = $("float-score");
+          fl.textContent = "+" + r.total.toLocaleString();
+          fl.classList.remove("show"); void fl.offsetWidth; fl.classList.add("show");
+          sfx.score(r.total>=800);
+          S.phase = "idle"; S.held = [false,false,false,false,false]; S.dice = [1,1,1,1,1];
+          $("table-hint").textContent = S.handsLeft>0 ? "次のハンドへ。「サイコロを振る」を押そう" : "ハンド終了…";
+          renderAll();
+          if(S.handsLeft<=0) setTimeout(endRound, 900);
+        }, wait);
+      }
+      function endRound(){
+        if(S.roundScore >= S.target){
+          const over = S.roundScore - S.target;
+          const overBonus = Math.min(8, Math.floor(over/500));
+          const interestCap = 5 + (hasRelic("piggy")?5:0);
+          const interest = Math.min(interestCap, Math.floor(S.coins/5));
+          const gained = 4 + S.handsLeft + interest + overBonus;
+          S.coins += gained;
+          sfx.fanfare(); setTimeout(()=>sfx.coin(), 500);
+          openShop(gained, interest, overBonus);
+        } else {
+          sfx.fail();
+          openGameOver();
+        }
+      }
+
+      /* ================= Shop ================= */
+      function genShop(){
+        const items = [];
+        const availRelics = RELICS.filter(r=>!S.relics.includes(r.id));
+        for(let i=0;i<3 && availRelics.length;i++){
+          const idx = Math.floor(Math.random()*availRelics.length);
+          const r = availRelics.splice(idx,1)[0];
+          items.push({kind:"relic", id:r.id, name:r.name, tag:r.tag, desc:r.desc, price:r.price});
+        }
+        const upgradable = HANDS.filter(h=>h.key!=="high");
+        for(let i=0;i<2;i++){
+          const h = upgradable[Math.floor(Math.random()*upgradable.length)];
+          const lv = S.levels[h.key];
+          items.push({kind:"levelup", id:h.key+":"+Date.now()+":"+i, handKey:h.key, name:h.name+" Lvアップ", tag:"役の強化",
+            desc:"チップ +"+h.upChips+"、マルチ +"+h.upMult+"（現在 Lv."+lv+" → "+(lv+1)+"）", price:3+lv});
+        }
+        items.push({kind:"consum", id:"extrahands:"+Date.now(), name:"ハンド +1（次ラウンド）", tag:"使い切り", desc:"次のラウンドだけハンド数が +1 増える", price:3});
+        S.shopItems = items.map(it=>({...it, sold:false}));
+      }
+      let pendingHandBonus = 0;
+      function openShop(gained, interest, overBonus){
+        genShop();
+        $("shop-title").textContent = "ラウンド"+S.round+" クリア！";
+        $("shop-lead").innerHTML = "報酬 <b>+"+gained+"コイン</b>（基本4 + 残りハンド分 + 利息"+interest + (overBonus? " + 超過ボーナス"+overBonus : "") + "）。次のノルマは <b>"+targetFor(S.round+1).toLocaleString()+"点</b>。買うなら今のうち。";
+        paintShop();
+        $("shop-overlay").classList.add("open");
+      }
+      function paintShop(){
+        $("shop-coins").textContent = S.coins;
+        const grid = $("shop-grid");
+        grid.innerHTML = "";
+        S.shopItems.forEach(it=>{
+          const div = document.createElement("div");
+          div.className = "item" + (it.sold? " sold":"");
+          div.innerHTML = '<span class="tag">'+it.tag+'</span><div class="iname">'+it.name+'</div><div class="idesc">'+it.desc+'</div>';
+          const b = document.createElement("button"); b.className = "buy"; b.type = "button";
+          b.textContent = it.sold ? "購入済み" : it.price+"コインで買う";
+          b.disabled = it.sold || S.coins < it.price;
+          b.addEventListener("click", ()=>{
+            if(S.coins < it.price || it.sold) return;
+            S.coins -= it.price; it.sold = true; sfx.coin();
+            if(it.kind==="relic"){
+              S.relics.push(it.id);
+              if(it.id==="reroll") S.rerollsPerHand++;
+              if(it.id==="handplus") S.handsPerRound++;
+              if(it.id==="mint") S.coins += 0; // applies at round start
+            } else if(it.kind==="levelup"){ S.levels[it.handKey]++; }
+            else if(it.kind==="consum"){ pendingHandBonus++; }
+            paintShop(); renderHUD();
+          });
+          div.appendChild(b);
+          grid.appendChild(div);
+        });
+        $("btn-shop-reroll").disabled = S.coins < 1;
+      }
+      function nextRound(){
+        $("shop-overlay").classList.remove("open");
+        S.round++;
+        S.target = targetFor(S.round);
+        S.roundScore = 0; S.combo = 0; S.log = S.log; // keep log
+        S.handsLeft = S.handsPerRound + pendingHandBonus; pendingHandBonus = 0;
+        S.rerollsLeft = S.rerollsPerHand;
+        S.phase = "idle"; S.held = [false,false,false,false,false]; S.dice = [1,1,1,1,1];
+        if(hasRelic("mint")) S.coins += 3;
+        $("table-hint").textContent = "ラウンド"+S.round+"。「サイコロを振る」を押してスタート";
+        sfx.click();
+        renderAll();
+      }
+
+      /* ================= Game over / restart ================= */
+      function rankFor(round){
+        if(round>=10) return ["S","ノルマの跳ね上がりを10ラウンドも耐え抜いた、本物のダイス使い。"];
+        if(round>=7) return ["A","あと少しで二桁ラウンド。レリックの組み合わせを変えてみよう。"];
+        if(round>=5) return ["B","中盤のノルマが壁。役のレベルアップを早めに買うのがコツ。"];
+        if(round>=3) return ["C","序盤突破。ショップで倍率系レリックを優先すると伸びます。"];
+        return ["D","まずはワンペア以上の役を毎ハンド決める練習から。"];
+      }
+      function openGameOver(){
+        const [rank, msg] = rankFor(S.round);
+        $("final-rank").textContent = rank;
+        $("final-rank").classList.toggle("s", rank==="S");
+        $("final-round").textContent = S.round;
+        $("final-score").textContent = S.totalScore.toLocaleString();
+        $("final-best").textContent = S.bestHand;
+        $("final-msg").textContent = "ノルマ "+S.target.toLocaleString()+"点 に対して "+S.roundScore.toLocaleString()+"点でした。"+msg;
+        $("over-overlay").classList.add("open");
+      }
+      function restart(){
+        $("over-overlay").classList.remove("open");
+        S.round = 1; S.target = targetFor(1); S.roundScore = 0; S.totalScore = 0;
+        S.handsPerRound = 4; S.rerollsPerHand = 2; S.handsLeft = 4; S.rerollsLeft = 2;
+        S.coins = 0; S.combo = 0; S.relics = []; S.log = [];
+        S.bestHand = "—"; S.bestHandRank = -1; pendingHandBonus = 0;
+        HANDS.forEach(h=>S.levels[h.key]=1);
+        S.phase = "idle"; S.held = [false,false,false,false,false]; S.dice = [1,1,1,1,1];
+        $("table-hint").textContent = "「サイコロを振る」を押してスタート";
+        renderAll();
+      }
+
+      /* ================= Events ================= */
+      $("btn-roll").addEventListener("click", rollDice);
+      $("btn-play").addEventListener("click", playHand);
+      $("btn-next-round").addEventListener("click", nextRound);
+      $("btn-restart").addEventListener("click", restart);
+      $("btn-shop-reroll").addEventListener("click", ()=>{
+        if(S.coins<1) return; S.coins--; sfx.click(); genShop(); paintShop(); renderHUD();
+      });
+      $("btn-help").addEventListener("click", ()=>{ sfx.click(); $("help-overlay").classList.add("open"); });
+      $("btn-help-close").addEventListener("click", ()=> $("help-overlay").classList.remove("open"));
+      $("btn-sound").addEventListener("click", function(){
+        soundOn = !soundOn; this.textContent = soundOn? "音 ON":"音 OFF"; if(soundOn) sfx.click();
+      });
+      document.addEventListener("keydown", e=>{
+        if($("shop-overlay").classList.contains("open") || $("over-overlay").classList.contains("open") || $("help-overlay").classList.contains("open")) return;
+        if(e.code==="Space"){ e.preventDefault(); rollDice(); }
+        else if(e.code==="Enter"){ e.preventDefault(); playHand(); }
+        else if(["1","2","3","4","5"].includes(e.key)) toggleHold(+e.key-1);
+      });
+      $("help-hands").innerHTML = HANDS.map(h=>"<b>"+h.name+"</b> "+h.baseChips+"チップ × "+h.baseMult+"マルチ — "+h.cond+"<br>").join("");
+
+      buildDice();
+      S.target = targetFor(1);
+      renderAll();
+    </script>
+  </body>
+</html>

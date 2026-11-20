@@ -1,0 +1,730 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<meta name="color-scheme" content="light dark" />
+<link rel="icon" href="data:," />
+<title>マインスイーパー</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@500;700;800&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#e9e7e0; --panel:#f7f5ef; --panel2:#ffffff; --ink:#1a1d21; --muted:#6b7280; --line:#d6d2c7;
+  --board-bg:#b8b4a8; --cell-top:#ffffff; --cell-side:#8a877e; --cell-face:#c9c5b8; --cell-open:#e8e5da;
+  --accent:#e63946; --accent2:#1d6fb8; --gold:#f2b705;
+  --led-bg:#140b0b; --led:#ff2a1a;
+  --n1:#2563eb; --n2:#1a9e4b; --n3:#e11d2e; --n4:#1e2a8a; --n5:#8b1a1a; --n6:#0e7c86; --n7:#111111; --n8:#6b7280;
+  --shadow:0 10px 30px rgba(0,0,0,.12);
+}
+@media (prefers-color-scheme: dark){
+  :root{
+    --bg:#14171c; --panel:#1e232b; --panel2:#242a34; --ink:#f1f2f4; --muted:#9aa3af; --line:#333a45;
+    --board-bg:#3a414d; --cell-top:#4b5566; --cell-side:#171a1f; --cell-face:#2e3540; --cell-open:#1c2129;
+    --led-bg:#0a0505;
+    --n1:#6ea8ff; --n2:#4ade80; --n3:#ff5a5a; --n4:#93a5ff; --n5:#ff8a7a; --n6:#2dd4bf; --n7:#e5e7eb; --n8:#9aa3af;
+    --shadow:0 10px 30px rgba(0,0,0,.45);
+  }
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+html{touch-action:manipulation}
+body{
+  background:var(--bg); color:var(--ink);
+  font-family:"M PLUS Rounded 1c", system-ui, -apple-system, "Hiragino Maru Gothic ProN", sans-serif;
+  -webkit-tap-highlight-color:transparent;
+  overscroll-behavior-y:none;
+}
+button{touch-action:manipulation}
+.wrap{max-width:860px;margin:0 auto;padding:16px 14px calc(28px + env(safe-area-inset-bottom))}
+.top{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:12px}
+h1{font-size:26px;line-height:1;margin:2px 0 4px;font-weight:800;letter-spacing:.02em}
+.sub{font-size:13px;color:var(--muted);line-height:1.5;margin:0}
+.best{flex-shrink:0;text-align:right;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:8px 10px;min-width:118px}
+.best small{display:block;font-size:11px;color:var(--muted);font-weight:700;letter-spacing:.06em}
+.best strong{font-size:18px}
+.best span{font-size:12px;color:var(--muted)}
+
+.diff{display:flex;gap:8px;flex-wrap:wrap;margin:14px 0 10px}
+.diff button{
+  appearance:none;border:1.5px solid var(--line);background:var(--panel2);color:var(--ink);
+  padding:9px 14px;border-radius:999px;font-weight:800;font-size:14px;cursor:pointer;font-family:inherit;
+}
+.diff button.active{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.diff button small{font-weight:500;opacity:.75;font-size:12px;margin-left:4px}
+.customBox{
+  display:none;background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:12px;margin-bottom:10px;
+}
+.customBox.show{display:flex;gap:10px;flex-wrap:wrap;align-items:end}
+.customBox label{font-size:12px;font-weight:700;color:var(--muted);display:flex;flex-direction:column;gap:4px}
+.customBox input{width:76px;padding:8px;border-radius:8px;border:1px solid var(--line);background:var(--panel2);color:var(--ink);font-size:16px;font-family:inherit}
+.customBox .apply{background:var(--accent);color:#fff;border:none;padding:10px 16px;border-radius:10px;font-weight:800;cursor:pointer;font-family:inherit}
+
+.gameCard{
+  background:var(--panel);border:1px solid var(--line);border-radius:18px;box-shadow:var(--shadow);
+  padding:14px;
+}
+.hud{
+  display:flex;align-items:center;justify-content:space-between;gap:10px;
+  background:var(--board-bg);border-radius:12px;padding:10px 12px;
+  box-shadow:inset 2px 2px 0 rgba(0,0,0,.22), inset -2px -2px 0 rgba(255,255,255,.35);
+}
+.led{
+  font-family:"Share Tech Mono", monospace;background:var(--led-bg);color:var(--led);
+  font-size:30px;line-height:1;letter-spacing:2px;padding:6px 8px 4px;border-radius:6px;min-width:86px;text-align:center;
+  box-shadow:inset 0 0 12px rgba(0,0,0,.9); text-shadow:0 0 8px rgba(255,42,26,.7);
+}
+.ledLabel{font-size:10px;font-weight:800;letter-spacing:.08em;text-align:center;color:rgba(0,0,0,.65);margin-top:4px}
+@media (prefers-color-scheme: dark){.ledLabel{color:rgba(255,255,255,.6)}}
+.faceBtn{
+  width:52px;height:52px;border-radius:50%;border:none;cursor:pointer;flex-shrink:0;
+  background:#ffd93b;box-shadow:0 3px 0 #c9a100, inset 0 -6px 0 rgba(0,0,0,.08), inset 0 4px 0 rgba(255,255,255,.6);
+  display:grid;place-items:center;padding:0;
+}
+.faceBtn:active{transform:translateY(2px);box-shadow:0 1px 0 #c9a100}
+.faceBtn svg{width:36px;height:36px;display:block}
+
+.toolbar{
+  display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:12px 0 10px;
+  background:var(--panel);border:1px solid var(--line);border-radius:16px;
+  padding:8px;box-shadow:0 8px 24px rgba(0,0,0,.10);
+}
+.modeSeg{flex:1 1 210px}
+.seg{display:flex;background:var(--panel2);border:1px solid var(--line);border-radius:999px;padding:3px;gap:3px}
+.seg button{border:none;background:transparent;padding:8px 14px;border-radius:999px;font-weight:800;font-size:14px;cursor:pointer;color:var(--muted);font-family:inherit;display:flex;align-items:center;gap:6px;min-height:44px}
+.modeSeg button{flex:1;justify-content:center;font-size:15px}
+.modeSeg button.active.flagActive{background:var(--accent);color:#fff}
+.seg button.active{background:var(--ink);color:var(--bg)}
+.seg svg{width:18px;height:18px;flex-shrink:0}
+.zoomSeg button{padding:8px 12px}
+.toolBtn{border:1px solid var(--line);background:var(--panel2);color:var(--ink);padding:9px 13px;border-radius:999px;font-weight:800;font-size:13px;cursor:pointer;font-family:inherit;min-height:44px}
+.status{
+  min-height:28px;display:flex;align-items:center;gap:8px;font-weight:800;font-size:14px;margin:2px 0 10px;
+}
+.status .dot{width:9px;height:9px;border-radius:50%;background:#22c55e;flex-shrink:0}
+.status.win{color:#15803d}.status.lose{color:#dc2626}
+.progress{height:8px;background:var(--line);border-radius:99px;overflow:hidden;margin-bottom:12px}
+.progress i{display:block;height:100%;background:linear-gradient(90deg,#22c55e,#84cc16);width:0%;transition:width .25s}
+
+.boardWrap{overflow:hidden;display:flex;justify-content:center;border-radius:12px;-webkit-overflow-scrolling:touch}
+.boardWrap.pannable{justify-content:flex-start;overflow-x:auto;overflow-y:hidden;padding-bottom:6px}
+.boardFrame{
+  background:var(--board-bg);padding:10px;border-radius:12px;
+  box-shadow:inset 2px 2px 0 rgba(0,0,0,.22), inset -2px -2px 0 rgba(255,255,255,.35);
+  max-width:100%;flex-shrink:0;
+}
+.boardWrap.pannable .boardFrame{max-width:none}
+#board{
+  display:grid;gap:0;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;touch-action:manipulation;
+}
+.cell{
+  border:none;padding:0;margin:0;cursor:pointer;position:relative;
+  display:grid;place-items:center;font-weight:800;line-height:1;font-family:"M PLUS Rounded 1c",sans-serif;
+  background:var(--cell-face);touch-action:manipulation;-webkit-touch-callout:none;
+  box-shadow:inset 2px 2px 0 var(--cell-top), inset -2px -2px 0 var(--cell-side);
+}
+.cell:active:not(.open){filter:brightness(.92)}
+.cell.open{background:var(--cell-open);box-shadow:inset 0 0 0 1px rgba(0,0,0,.08);cursor:default}
+.cell.open.num{cursor:pointer}
+.cell.mineHit{background:#e11d2e !important}
+.cell.wrongFlag{background:#fde68a}
+.cell .flagIcon{width:72%;height:72%;pointer-events:none}
+.cell .mineIcon{width:78%;height:78%;pointer-events:none}
+.cell.pop{animation:pop .18s ease}
+@keyframes pop{0%{transform:scale(.7)}100%{transform:scale(1)}}
+@media (prefers-reduced-motion: reduce){.cell.pop{animation:none}}
+.shake{animation:shake .45s ease}
+@keyframes shake{0%,100%{transform:translateX(0)}20%{transform:translateX(-7px)}40%{transform:translateX(6px)}60%{transform:translateX(-4px)}80%{transform:translateX(3px)}}
+@media (prefers-reduced-motion: reduce){.shake{animation:none}}
+
+.howto{margin-top:16px;background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:14px 16px}
+.howto h2{font-size:15px;margin:0 0 8px}
+.howto ul{margin:0;padding-left:18px;color:var(--muted);font-size:13.5px;line-height:1.75}
+.howto b{color:var(--ink)}
+.kbd{background:var(--panel2);border:1px solid var(--line);border-bottom-width:2px;border-radius:6px;padding:1px 6px;font-size:12px;font-weight:800;color:var(--ink)}
+
+.resultBanner{display:none;margin-top:12px;border-radius:14px;padding:14px;text-align:center}
+.resultBanner.show{display:block}
+.resultBanner.win{background:#dcfce7;color:#14532d;border:1px solid #86efac}
+.resultBanner.lose{background:#fee2e2;color:#7f1d1d;border:1px solid #fca5a5}
+@media (prefers-color-scheme: dark){
+  .resultBanner.win{background:#123324;color:#bbf7d0;border-color:#166534}
+  .resultBanner.lose{background:#3b1111;color:#fecaca;border-color:#7f1d1d}
+}
+.resultBanner strong{font-size:20px;display:block;margin-bottom:4px}
+.resultBanner p{margin:0 0 10px;font-size:13.5px;opacity:.85}
+.resultBanner button{background:var(--ink);color:var(--bg);border:none;padding:10px 18px;border-radius:999px;font-weight:800;cursor:pointer;font-family:inherit}
+
+.legend{display:flex;gap:6px;flex-wrap:wrap;margin-top:12px}
+.legend span{font-size:12px;font-weight:800;padding:5px 9px;border-radius:999px;background:var(--panel2);border:1px solid var(--line)}
+.n1{color:var(--n1)}.n2{color:var(--n2)}.n3{color:var(--n3)}.n4{color:var(--n4)}.n5{color:var(--n5)}.n6{color:var(--n6)}.n7{color:var(--n7)}.n8{color:var(--n8)}
+footer{font-size:12px;color:var(--muted);text-align:center;margin-top:16px;line-height:1.6}
+@media(max-width:640px){
+  .wrap{padding:12px 10px calc(20px + env(safe-area-inset-bottom))}
+  .top{flex-direction:row;align-items:center;margin-bottom:8px}
+  h1{font-size:21px}
+  .sub{font-size:12px}
+  .sub .pcOnly{display:none}
+  .best{min-width:92px;padding:6px 8px;border-radius:10px}
+  .best strong{font-size:16px}
+  /* difficulty: 2x2 thumb grid, full-width tap targets */
+  .diff{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:10px 0 8px}
+  .diff button{min-height:50px;padding:10px 8px;font-size:15px;border-radius:14px}
+  .diff button small{display:block;margin:2px 0 0;font-size:11px}
+  .customBox.show{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px}
+  .customBox input{width:100%;min-height:48px;font-size:17px}
+  .customBox .apply{grid-column:1/-1;min-height:50px;font-size:15px}
+  .gameCard{padding:10px;border-radius:16px}
+  /* HUD stays visible while the board scrolls under your thumb */
+  .hud{position:sticky;top:calc(6px + env(safe-area-inset-top));z-index:15;padding:8px 10px}
+  .led{font-size:25px;min-width:72px;letter-spacing:1px}
+  .faceBtn{width:54px;height:54px}
+  .faceBtn svg{width:38px;height:38px}
+  .status{font-size:13.5px;min-height:40px;align-items:flex-start;padding-top:4px}
+  .status .dot{margin-top:5px}
+  /* mode switch stays reachable under the sticky HUD while playing */
+  .toolbar{border-radius:14px;position:sticky;top:calc(84px + env(safe-area-inset-top));z-index:14;box-shadow:0 8px 24px rgba(0,0,0,.18)}
+  .modeSeg{flex:1 1 100%;order:-1}
+  .modeSeg button{min-height:52px;font-size:16px}
+  .zoomSeg{flex:1}
+  .zoomSeg button{flex:1;justify-content:center;min-height:48px}
+  .toolBtn{flex:1;min-height:48px}
+  .boardFrame{padding:6px;border-radius:10px}
+  .howto{padding:12px 14px}
+  .howto ul{font-size:13px}
+  footer{font-size:11.5px}
+}
+@media(max-width:380px){
+  .led{font-size:22px;min-width:64px}
+  .faceBtn{width:48px;height:48px}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="top">
+    <div>
+      <h1>💣 マインスイーパー</h1>
+      <p class="sub">地雷を踏まずに、すべてのマスを開けよう。<br>最初の1マスは絶対に安全です。<span class="pcOnly"> 旗は長押しでも立てられます。</span></p>
+    </div>
+    <div class="best" aria-live="polite">
+      <small>BEST TIME</small>
+      <strong id="bestTime">—</strong> <span id="bestDiff">初級</span>
+    </div>
+  </div>
+
+  <div class="diff" role="tablist" aria-label="難易度">
+    <button data-diff="beginner" class="active">初級 <small>9×9 ・ 10個</small></button>
+    <button data-diff="intermediate">中級 <small>16×16 ・ 40個</small></button>
+    <button data-diff="expert">上級 <small>30×16 ・ 99個</small></button>
+    <button data-diff="custom">カスタム</button>
+  </div>
+
+  <div class="customBox" id="customBox">
+    <label>よこ <input type="number" id="cW" value="12" min="8" max="30"></label>
+    <label>たて <input type="number" id="cH" value="12" min="8" max="24"></label>
+    <label>地雷 <input type="number" id="cM" value="20" min="10" max="120"></label>
+    <button class="apply" id="applyCustom">このサイズで開始</button>
+  </div>
+
+  <div class="gameCard" id="gameCard">
+    <div class="hud">
+      <div>
+        <div class="led" id="mineLed">010</div>
+        <div class="ledLabel">MINES</div>
+      </div>
+      <button class="faceBtn" id="faceBtn" aria-label="最初からやり直す" title="最初からやり直す">
+        <svg id="faceSvg" viewBox="0 0 48 48" aria-hidden="true">
+          <circle cx="16" cy="19" r="3.2" fill="#1a1a1a"/><circle cx="32" cy="19" r="3.2" fill="#1a1a1a"/>
+          <path d="M14 31 Q24 39 34 31" stroke="#1a1a1a" stroke-width="3" fill="none" stroke-linecap="round"/>
+        </svg>
+      </button>
+      <div>
+        <div class="led" id="timeLed">000</div>
+        <div class="ledLabel">TIME</div>
+      </div>
+    </div>
+
+    <div class="toolbar">
+      <div class="seg modeSeg" role="group" aria-label="モード切替">
+        <button id="modeDig" class="active" aria-pressed="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M14 4l6 6-8.5 8.5a2.1 2.1 0 0 1-3 0L6 16a2.1 2.1 0 0 1 0-3L14 4z"/><path d="M13 5l6 6"/></svg>
+          掘る
+        </button>
+        <button id="modeFlag" aria-pressed="false">
+          <svg viewBox="0 0 24 24" fill="currentColor"><path d="M5 3v18" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/><path d="M5 4h11l-2.5 3.5L16 11H5z"/></svg>
+          旗を立てる
+        </button>
+      </div>
+      <div class="seg zoomSeg" role="group" aria-label="盤面の表示サイズ">
+        <button id="zoomFit" class="active">全体表示</button>
+        <button id="zoomLarge">拡大</button>
+      </div>
+      <button class="toolBtn" id="soundBtn">🔊 サウンド ON</button>
+    </div>
+
+    <div class="status" id="status"><span class="dot"></span><span id="statusText">マスをタップしてスタート。地雷だと思う場所には旗を立てよう。</span></div>
+    <div class="progress"><i id="progressBar"></i></div>
+
+    <div class="boardWrap">
+      <div class="boardFrame">
+        <div id="board" aria-label="マインスイーパー盤面"></div>
+      </div>
+    </div>
+
+    <div class="resultBanner" id="resultBanner">
+      <strong id="resultTitle">クリア！</strong>
+      <p id="resultText"></p>
+      <button id="againBtn">もう一度遊ぶ</button>
+    </div>
+
+    <div class="legend" aria-hidden="true">
+      <span class="n1">1</span><span class="n2">2</span><span class="n3">3</span><span class="n4">4</span>
+      <span class="n5">5</span><span class="n6">6</span><span class="n7">7</span><span class="n8">8</span>
+      <span style="color:var(--muted)">← 周囲の地雷の数</span>
+    </div>
+  </div>
+
+  <div class="howto">
+    <h2>遊び方・コツ</h2>
+    <ul>
+      <li><b>掘る：</b> マスをクリック／タップ。数字は「周囲8マスにある地雷の数」です。</li>
+      <li><b>旗を立てる：</b> スマホは下の大きな <b>「旗を立てる」</b> ボタンに切り替えてタップ（長押しでもOK）。PCは <span class="kbd">右クリック</span> でも立てられます。</li>
+      <li><b>マスが小さくて押しにくいとき：</b> 下のバーで <b>「拡大」</b> に切り替えると1マスが大きくなり、盤面を左右にスワイプして動かせます。中級・上級におすすめ。</li>
+      <li><b>まとめ開け（コード）：</b> 数字の周りに同じ数だけ旗が立っていたら、その数字をもう一度クリックすると残りを一気に開けます。時短の必須テクです。</li>
+      <li><b>詰まったら：</b> 「1」の角や辺をよく見ると、地雷の場所が1つに決まることが多いです。端から攻めるのが定石。</li>
+      <li>中央ボタン（顔）を押すといつでも最初からやり直せます。</li>
+    </ul>
+  </div>
+
+  <footer>初級 9×9 / 中級 16×16 / 上級 30×16 は定番サイズです。スマホでは中級・上級は「拡大」表示にすると押しやすくなります（盤面はスワイプで移動）。</footer>
+</div>
+
+<script>
+(function(){
+  "use strict";
+  var DIFFS = {
+    beginner:{label:"初級", w:9, h:9, mines:10},
+    intermediate:{label:"中級", w:16, h:16, mines:40},
+    expert:{label:"上級", w:30, h:16, mines:99},
+    custom:{label:"カスタム", w:12, h:12, mines:20}
+  };
+  var diffKey="beginner";
+  var W=9,H=9,MINES=10;
+  var cells=[]; // {mine, open, flag, num, el}
+  var started=false, over=false, won=false;
+  var flags=0, opened=0;
+  var seconds=0, timerId=null;
+  var flagMode=false;
+  var zoomLarge=false;
+  var soundOn=true;
+  var best={}; // in-memory only, per difficulty label
+  var audioCtx=null;
+
+  var boardEl=document.getElementById('board');
+  var mineLed=document.getElementById('mineLed');
+  var timeLed=document.getElementById('timeLed');
+  var statusEl=document.getElementById('status');
+  var statusText=document.getElementById('statusText');
+  var progressBar=document.getElementById('progressBar');
+  var faceSvg=document.getElementById('faceSvg');
+  var resultBanner=document.getElementById('resultBanner');
+  var resultTitle=document.getElementById('resultTitle');
+  var resultText=document.getElementById('resultText');
+  var gameCard=document.getElementById('gameCard');
+
+  var FLAG_SVG='<svg class="flagIcon" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 21 V4" stroke="#1a1a1a" stroke-width="2.2" stroke-linecap="round"/><path d="M6 4.5 L18 7 L6 10 Z" fill="#e63946"/></svg>';
+  var MINE_SVG='<svg class="mineIcon" viewBox="0 0 24 24" aria-hidden="true"><g stroke="#111" stroke-width="2" stroke-linecap="round"><path d="M12 3v18M3 12h18M5.6 5.6l12.8 12.8M18.4 5.6L5.6 18.4"/></g><circle cx="12" cy="12" r="5.2" fill="#111"/><circle cx="10.2" cy="10.2" r="1.6" fill="#fff" opacity=".85"/></svg>';
+  var CROSS='<span style="font-weight:900;color:#b91c1c;font-size:1.1em;line-height:1">✕</span>';
+
+  var FACES={
+    smile:'<circle cx="16" cy="19" r="3.2" fill="#1a1a1a"/><circle cx="32" cy="19" r="3.2" fill="#1a1a1a"/><path d="M14 31 Q24 39 34 31" stroke="#1a1a1a" stroke-width="3" fill="none" stroke-linecap="round"/>',
+    wow:'<circle cx="16" cy="19" r="3.2" fill="#1a1a1a"/><circle cx="32" cy="19" r="3.2" fill="#1a1a1a"/><ellipse cx="24" cy="33" rx="4.5" ry="5" fill="#1a1a1a"/>',
+    dead:'<g stroke="#1a1a1a" stroke-width="2.6" stroke-linecap="round"><path d="M12 15l7 7M19 15l-7 7M29 15l7 7M36 15l-7 7"/></g><path d="M14 36 Q24 30 34 36" stroke="#1a1a1a" stroke-width="3" fill="none" stroke-linecap="round"/>',
+    cool:'<path d="M7 16 h14 v6 a7 7 0 0 1-7 5 a7 7 0 0 1-7-5z M27 16 h14 v6 a7 7 0 0 1-7 5 a7 7 0 0 1-7-5z M21 18 h6" fill="#1a1a1a"/><path d="M14 36 Q24 41 34 36" stroke="#1a1a1a" stroke-width="3" fill="none" stroke-linecap="round"/>'
+  };
+  function setFace(name){ faceSvg.innerHTML=FACES[name]; }
+
+  function ensureAudio(){
+    if(!soundOn) return null;
+    try{
+      if(!audioCtx) audioCtx=new (window.AudioContext||window.webkitAudioContext)();
+      if(audioCtx.state==="suspended") audioCtx.resume();
+      return audioCtx;
+    }catch(e){ return null; }
+  }
+  function beep(freq,dur,type,vol,when){
+    var ctx=ensureAudio(); if(!ctx) return;
+    var t=ctx.currentTime+(when||0);
+    var o=ctx.createOscillator(), g=ctx.createGain();
+    o.type=type||"sine"; o.frequency.setValueAtTime(freq,t);
+    g.gain.setValueAtTime(vol||0.06,t);
+    g.gain.exponentialRampToValueAtTime(0.0001,t+dur);
+    o.connect(g); g.connect(ctx.destination);
+    o.start(t); o.stop(t+dur+0.02);
+  }
+  function sfx(name){
+    if(!soundOn) return;
+    if(name==="open") beep(520,0.06,"triangle",0.05);
+    else if(name==="flag") beep(740,0.07,"triangle",0.05);
+    else if(name==="unflag") beep(440,0.06,"triangle",0.04);
+    else if(name==="boom"){ beep(90,0.5,"sawtooth",0.14); beep(55,0.6,"square",0.10,0.02); }
+    else if(name==="win"){ [523,659,784,1046].forEach(function(f,i){ beep(f,0.16,"triangle",0.07,i*0.11); }); }
+    else if(name==="chord") beep(620,0.06,"triangle",0.05);
+  }
+
+  function fmtLed(n){
+    if(n<0){ var v=Math.max(-99,n); return "-"+String(Math.abs(v)).padStart(2,"0"); }
+    return String(Math.min(999,n)).padStart(3,"0");
+  }
+  function updateHud(){
+    mineLed.textContent=fmtLed(MINES-flags);
+    timeLed.textContent=fmtLed(seconds);
+    var total=W*H-MINES;
+    progressBar.style.width=(total>0? Math.round(opened/total*100):0)+"%";
+  }
+  function setStatus(text, kind){
+    statusText.textContent=text;
+    statusEl.className="status"+(kind?" "+kind:"");
+  }
+
+  function idx(x,y){ return y*W+x; }
+  function inBounds(x,y){ return x>=0&&y>=0&&x<W&&y<H; }
+  function neighbors(x,y){
+    var out=[];
+    for(var dy=-1;dy<=1;dy++) for(var dx=-1;dx<=1;dx++){
+      if(dx===0&&dy===0) continue;
+      var nx=x+dx, ny=y+dy;
+      if(inBounds(nx,ny)) out.push(idx(nx,ny));
+    }
+    return out;
+  }
+
+  function placeMines(safeIdx){
+    var safeSet={}; safeSet[safeIdx]=true;
+    var sx=safeIdx%W, sy=Math.floor(safeIdx/W);
+    neighbors(sx,sy).forEach(function(i){ safeSet[i]=true; });
+    var pool=[];
+    for(var i=0;i<W*H;i++) if(!safeSet[i]) pool.push(i);
+    // Fisher-Yates partial shuffle
+    for(var k=0;k<MINES && k<pool.length;k++){
+      var j=k+Math.floor(Math.random()*(pool.length-k));
+      var tmp=pool[k]; pool[k]=pool[j]; pool[j]=tmp;
+      cells[pool[k]].mine=true;
+    }
+    for(var y=0;y<H;y++) for(var x=0;x<W;x++){
+      var c=cells[idx(x,y)];
+      if(c.mine){ c.num=-1; continue; }
+      c.num=neighbors(x,y).reduce(function(acc,ni){ return acc+(cells[ni].mine?1:0); },0);
+    }
+  }
+
+  var LARGE_CELL=40; // enlarged cell size: comfortable fingertip target
+  function cellSize(){
+    if(zoomLarge) return LARGE_CELL;
+    var wrapEl=document.querySelector('.boardWrap');
+    var framePad = window.innerWidth<=640 ? 12 : 20;
+    var avail = wrapEl ? (wrapEl.clientWidth - framePad) : 320;
+    if(!avail || avail<100) avail=320;
+    var byWidth=Math.floor(avail/W);
+    // Fit mode: fill the screen width, up to a generous 44px per cell.
+    var size=Math.max(16, Math.min(44, byWidth));
+    return size;
+  }
+  function syncBoardWrap(){
+    var wrapEl=document.querySelector('.boardWrap');
+    if(!wrapEl) return;
+    // Panning is confined to the board area, and only in enlarged mode
+    // (or when a fit board still cannot shrink enough, e.g. expert).
+    var framePad = window.innerWidth<=640 ? 12 : 20;
+    var need=W*cellSize()+framePad;
+    var pannable = need > wrapEl.clientWidth+2;
+    wrapEl.classList.toggle("pannable", pannable);
+  }
+  function applyCellSizes(){
+    syncBoardWrap();
+    var size=cellSize();
+    boardEl.style.gridTemplateColumns="repeat("+W+", "+size+"px)";
+    cells.forEach(function(c){
+      c.el.style.width=size+"px"; c.el.style.height=size+"px"; c.el.style.fontSize=Math.round(size*0.58)+"px";
+    });
+  }
+
+  function buildBoard(){
+    boardEl.innerHTML="";
+    cells=[];
+    var size=cellSize();
+    boardEl.style.gridTemplateColumns="repeat("+W+", "+size+"px)";
+    for(var i=0;i<W*H;i++){
+      var btn=document.createElement('button');
+      btn.type="button";
+      btn.className="cell";
+      btn.style.width=size+"px"; btn.style.height=size+"px";
+      btn.style.fontSize=Math.round(size*0.58)+"px";
+      btn.dataset.i=i;
+      btn.setAttribute("aria-label","マス "+(i+1));
+      boardEl.appendChild(btn);
+      cells.push({mine:false, open:false, flag:false, num:0, el:btn});
+    }
+    syncBoardWrap();
+  }
+
+  function newGame(){
+    stopTimer(); seconds=0; started=false; over=false; won=false; flags=0; opened=0;
+    var d=DIFFS[diffKey];
+    W=d.w; H=d.h; MINES=Math.min(d.mines, W*H-9);
+    buildBoard();
+    setFace("smile");
+    resultBanner.className="resultBanner";
+    gameCard.classList.remove("shake");
+    setStatus("マスをタップしてスタート。地雷だと思う場所には旗を立てよう。","");
+    document.getElementById('bestDiff').textContent=d.label;
+    document.getElementById('bestTime').textContent=best[diffKey]? best[diffKey]+"秒" : "—";
+    updateHud();
+  }
+
+  function startTimer(){
+    if(timerId) return;
+    timerId=setInterval(function(){ seconds=Math.min(999,seconds+1); timeLed.textContent=fmtLed(seconds); },1000);
+  }
+  function stopTimer(){ if(timerId){ clearInterval(timerId); timerId=null; } }
+
+  function renderCell(c){
+    var el=c.el;
+    el.classList.toggle("open", c.open);
+    el.classList.toggle("num", c.open && c.num>0);
+    if(c.open){
+      el.innerHTML = c.mine ? MINE_SVG : (c.num>0 ? String(c.num) : "");
+      if(c.num>0) el.className="cell open num n"+c.num; else if(!c.mine) el.className="cell open";
+      if(c.mine) el.className="cell open";
+    } else if(c.flag){
+      el.innerHTML=FLAG_SVG;
+    } else {
+      el.innerHTML="";
+      el.className="cell";
+    }
+  }
+
+  function reveal(startIdx){
+    var stack=[startIdx];
+    var hitMine=false;
+    while(stack.length){
+      var i=stack.pop();
+      var c=cells[i];
+      if(c.open || c.flag) continue;
+      c.open=true; opened++;
+      c.el.classList.add("pop");
+      if(c.mine){ hitMine=true; renderCell(c); continue; }
+      renderCell(c);
+      if(c.num===0){
+        var x=i%W, y=Math.floor(i/W);
+        neighbors(x,y).forEach(function(ni){ if(!cells[ni].open) stack.push(ni); });
+      }
+    }
+    return hitMine;
+  }
+
+  function toggleFlag(c){
+    if(c.open || over) return;
+    c.flag=!c.flag;
+    flags+= c.flag?1:-1;
+    sfx(c.flag?"flag":"unflag");
+    renderCell(c);
+    updateHud();
+    setStatus(c.flag? "旗を立てました。残り地雷は目安 "+(MINES-flags)+" 個です。" : "旗を外しました。","");
+  }
+
+  function gameOver(win, hitIdx){
+    over=true; won=win; stopTimer();
+    if(win){
+      // auto-flag remaining mines
+      cells.forEach(function(c){ if(c.mine && !c.flag){ c.flag=true; flags++; renderCell(c);} });
+      updateHud();
+      setFace("cool"); sfx("win");
+      setStatus("クリア！すべてのマスを開けました。","win");
+      var isBest=false;
+      if(!best[diffKey] || seconds<best[diffKey]){ best[diffKey]=seconds; isBest=true; }
+      document.getElementById('bestTime').textContent=best[diffKey]+"秒";
+      resultTitle.textContent="🎉 クリア！ "+seconds+"秒";
+      resultText.textContent=(DIFFS[diffKey].label+" ・ "+W+"×"+H+" ・ 地雷"+MINES+"個")+(isBest? " — 自己ベスト更新！" : " — ベストは "+best[diffKey]+"秒");
+      resultBanner.className="resultBanner show win";
+    } else {
+      setFace("dead"); sfx("boom");
+      if(navigator.vibrate) navigator.vibrate(200);
+      gameCard.classList.remove("shake"); void gameCard.offsetWidth; gameCard.classList.add("shake");
+      cells.forEach(function(c){
+        if(c.mine){
+          if(c.flag){ /* correct flag stays */ }
+          else { c.open=true; renderCell(c); if(idx(c.el.dataset.i|0,0)===hitIdx){} }
+        } else if(c.flag){
+          c.open=false; c.el.className="cell wrongFlag"; c.el.innerHTML=MINE_SVG+CROSS;
+        }
+      });
+      if(typeof hitIdx==="number" && cells[hitIdx]){ cells[hitIdx].el.classList.add("mineHit"); }
+      setStatus("ドカン…地雷を踏んでしまいました。顔ボタンでもう一度挑戦できます。","lose");
+      resultTitle.textContent="💥 ゲームオーバー";
+      resultText.textContent="開けたマス "+opened+" / "+(W*H-MINES)+" ・ 経過 "+seconds+"秒。端の「1」から攻めると安定します。";
+      resultBanner.className="resultBanner show lose";
+    }
+  }
+
+  function checkWin(){
+    if(opened===W*H-MINES) gameOver(true);
+  }
+
+  function handleOpen(i){
+    if(over) return;
+    var c=cells[i];
+    if(c.flag) { setStatus("旗が立っているマスは開けません。旗を外してから開けてください。",""); return; }
+    if(c.open){
+      // chord
+      if(c.num>0){
+        var x=i%W, y=Math.floor(i/W);
+        var ns=neighbors(x,y);
+        var flagCount=ns.filter(function(ni){return cells[ni].flag;}).length;
+        if(flagCount===c.num){
+          var targets=ns.filter(function(ni){return !cells[ni].open && !cells[ni].flag;});
+          if(targets.length){
+            sfx("chord");
+            var hit=false, hitI=-1;
+            targets.forEach(function(ni){ if(reveal(ni)) {hit=true; hitI=ni;} });
+            updateHud();
+            if(hit) gameOver(false, hitI); else checkWin();
+          }
+        } else {
+          setStatus("まとめ開けは、周りの旗の数が数字と一致したときだけ使えます。（今 "+flagCount+" / "+c.num+"）","");
+        }
+      }
+      return;
+    }
+    if(!started){
+      started=true;
+      placeMines(i);
+      startTimer();
+    }
+    sfx("open");
+    var hitMine=reveal(i);
+    updateHud();
+    if(hitMine) gameOver(false, i); else {
+      setStatus("開けたマス "+opened+" / "+(W*H-MINES)+"。数字の周りをよく見て進めよう。","");
+      checkWin();
+    }
+  }
+
+  // ---- Input: click / right-click / long-press / chord press face ----
+  var pressTimer=null, longPressed=false, pressIdx=null, pressX=0, pressY=0;
+  boardEl.addEventListener('contextmenu', function(e){ e.preventDefault(); });
+
+  boardEl.addEventListener('pointerdown', function(e){
+    var btn=e.target.closest('.cell'); if(!btn) return;
+    var i=parseInt(btn.dataset.i,10);
+    pressIdx=i; longPressed=false; pressX=e.clientX; pressY=e.clientY;
+    if(!over && !cells[i].open) setFace("wow");
+    if(e.pointerType==="mouse" && e.button===2){
+      toggleFlag(cells[i]); longPressed=true; return;
+    }
+    if(e.pointerType!=="mouse"){
+      pressTimer=setTimeout(function(){
+        longPressed=true;
+        toggleFlag(cells[i]);
+        if(navigator.vibrate) navigator.vibrate(30);
+        setFace("smile");
+      }, 380);
+    }
+  });
+  boardEl.addEventListener('pointerup', function(e){
+    if(pressTimer){ clearTimeout(pressTimer); pressTimer=null; }
+    if(!over) setFace(started?"smile":"smile");
+    if(longPressed){ longPressed=false; return; }
+    var btn=e.target.closest('.cell'); if(!btn) return;
+    var i=parseInt(btn.dataset.i,10);
+    if(i!==pressIdx && pressIdx!==null) { /* dragged off */ }
+    if(e.pointerType==="mouse" && e.button===2) return;
+    if(flagMode && !cells[i].open){ toggleFlag(cells[i]); return; }
+    handleOpen(i);
+  });
+  // Moving the finger (panning the enlarged board / scrolling) cancels a pending long-press flag.
+  boardEl.addEventListener('pointermove', function(e){
+    if(pressTimer && (Math.abs(e.clientX-pressX)>10 || Math.abs(e.clientY-pressY)>10)){
+      clearTimeout(pressTimer); pressTimer=null;
+    }
+  });
+  boardEl.addEventListener('pointerleave', function(){ if(pressTimer){clearTimeout(pressTimer); pressTimer=null;} setFace("smile"); }, true);
+  boardEl.addEventListener('pointercancel', function(){ if(pressTimer){clearTimeout(pressTimer); pressTimer=null;} });
+
+  // Difficulty
+  document.querySelectorAll('.diff button').forEach(function(b){
+    b.addEventListener('click', function(){
+      document.querySelectorAll('.diff button').forEach(function(x){x.classList.remove('active');});
+      b.classList.add('active');
+      diffKey=b.dataset.diff;
+      document.getElementById('customBox').classList.toggle('show', diffKey==="custom");
+      if(diffKey!=="custom") newGame();
+      else newGame();
+    });
+  });
+  document.getElementById('applyCustom').addEventListener('click', function(){
+    var w=parseInt(document.getElementById('cW').value,10)||12;
+    var h=parseInt(document.getElementById('cH').value,10)||12;
+    var m=parseInt(document.getElementById('cM').value,10)||20;
+    w=Math.max(8,Math.min(30,w)); h=Math.max(8,Math.min(24,h));
+    m=Math.max(10,Math.min(w*h-10,m));
+    DIFFS.custom={label:"カスタム", w:w, h:h, mines:m};
+    newGame();
+    setStatus("カスタム "+w+"×"+h+" ・ 地雷"+m+"個でスタート。","");
+  });
+
+  // Mode toggle
+  var modeDig=document.getElementById('modeDig'), modeFlag=document.getElementById('modeFlag');
+  function setMode(flag){
+    flagMode=flag;
+    modeDig.classList.toggle('active', !flag);
+    modeFlag.classList.toggle('active', flag);
+    modeFlag.classList.toggle('flagActive', flag);
+    modeDig.setAttribute('aria-pressed', String(!flag));
+    modeFlag.setAttribute('aria-pressed', String(flag));
+    if(navigator.vibrate) navigator.vibrate(15);
+    setStatus(flag? "旗モード：タップで旗を立て／外しします。" : "掘るモード：タップでマスを開けます。", "");
+  }
+  modeDig.addEventListener('click', function(){ setMode(false); });
+  modeFlag.addEventListener('click', function(){ setMode(true); });
+
+  // Zoom toggle: fit whole board vs. enlarged tappable cells (board pans)
+  var zoomFit=document.getElementById('zoomFit'), zoomLargeBtn=document.getElementById('zoomLarge');
+  function setZoom(large){
+    zoomLarge=large;
+    zoomFit.classList.toggle('active', !large);
+    zoomLargeBtn.classList.toggle('active', large);
+    applyCellSizes();
+    var wrapEl=document.querySelector('.boardWrap');
+    if(wrapEl){ wrapEl.scrollLeft=0; }
+    setStatus(large? "拡大表示：1マスが大きくなりました。盤面はスワイプで動かせます。" : "全体表示：盤面をすべて画面内に表示します。", "");
+  }
+  zoomFit.addEventListener('click', function(){ setZoom(false); });
+  zoomLargeBtn.addEventListener('click', function(){ setZoom(true); });
+
+  // Sound toggle
+  var soundBtn=document.getElementById('soundBtn');
+  soundBtn.addEventListener('click', function(){
+    soundOn=!soundOn;
+    soundBtn.textContent= soundOn? "🔊 サウンド ON" : "🔇 サウンド OFF";
+    if(soundOn) sfx("flag");
+  });
+
+  document.getElementById('faceBtn').addEventListener('click', newGame);
+  document.getElementById('againBtn').addEventListener('click', function(){ newGame(); window.scrollTo({top:0,behavior:"smooth"}); });
+
+  var resizeT=null;
+  window.addEventListener('resize', function(){
+    clearTimeout(resizeT);
+    resizeT=setTimeout(function(){
+      // rebuild visuals at new cell size, preserving state by re-rendering
+      applyCellSizes();
+    },150);
+  });
+
+  newGame();
+})();
+</script>
+</body>
+</html>

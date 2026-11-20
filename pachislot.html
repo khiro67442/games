@@ -1,0 +1,1108 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="color-scheme" content="light dark" />
+    <link rel="icon" href="data:," />
+    <title>くまモンパチスロ</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@500;700;800&family=Share+Tech+Mono&display=swap" rel="stylesheet" />
+    <style>
+      :root {
+        color-scheme: light dark;
+        --hall: #efe9e2;
+        --hall-2: #e3d9cd;
+        --ink: #241d18;
+        --ink-soft: #5c5148;
+        --panel: #fffdf9;
+        --panel-line: #d8cbb9;
+        --machine: #c8102e;
+        --machine-dark: #8f0a20;
+        --machine-black: #1c1a1a;
+        --gold: #f2b705;
+        --gold-deep: #c98f04;
+        --led-bg: #180404;
+        --led: #ffcf3f;
+        --led-red: #ff5347;
+        --led-green: #59e39a;
+        --reel-bg: #fdfbf5;
+        --accent: #c8102e;
+        --good: #1d9e5f;
+        --shadow: 0 18px 40px rgba(60, 30, 10, .22);
+      }
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --hall: #16120f;
+          --hall-2: #100d0b;
+          --ink: #f3ece2;
+          --ink-soft: #b8ab9c;
+          --panel: #221c18;
+          --panel-line: #41362c;
+          --shadow: 0 18px 44px rgba(0, 0, 0, .55);
+        }
+      }
+      * { box-sizing: border-box; }
+      html, body { margin: 0; padding: 0; }
+      body {
+        font-family: "M PLUS Rounded 1c", "Hiragino Maru Gothic ProN", "Hiragino Sans", sans-serif;
+        background:
+          radial-gradient(1100px 500px at 50% -120px, rgba(242, 183, 5, .16), transparent 60%),
+          linear-gradient(180deg, var(--hall), var(--hall-2));
+        color: var(--ink);
+        min-height: 100vh;
+        -webkit-tap-highlight-color: transparent;
+      }
+      .wrap {
+        max-width: 1120px;
+        margin: 0 auto;
+        padding: 20px 16px 48px;
+        display: grid;
+        grid-template-columns: minmax(0, 620px) minmax(0, 1fr);
+        gap: 22px;
+        align-items: start;
+      }
+      @media (max-width: 900px) {
+        .wrap { grid-template-columns: minmax(0, 1fr); }
+      }
+
+      /* ============ MACHINE ============ */
+      .machine {
+        background: linear-gradient(180deg, var(--machine) 0%, var(--machine-dark) 78%, #6d0716 100%);
+        border-radius: 26px;
+        padding: 14px 14px 18px;
+        box-shadow: var(--shadow), inset 0 2px 0 rgba(255,255,255,.35), inset 0 -6px 14px rgba(0,0,0,.35);
+        position: relative;
+        overflow: hidden;
+      }
+      .machine::before {
+        content: "";
+        position: absolute; inset: 0;
+        background: radial-gradient(600px 200px at 50% -60px, rgba(255,255,255,.22), transparent 70%);
+        pointer-events: none;
+      }
+      /* top data lamps */
+      .data-lamp {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 8px;
+        margin-bottom: 10px;
+        position: relative;
+      }
+      .data-cell {
+        background: var(--machine-black);
+        border: 2px solid rgba(242,183,5,.55);
+        border-radius: 10px;
+        padding: 5px 4px 6px;
+        text-align: center;
+      }
+      .data-cell .lab { font-size: 10px; font-weight: 800; letter-spacing: .12em; color: #f6d47c; }
+      .data-cell .val { font-family: "Share Tech Mono", monospace; font-size: 22px; line-height: 1.1; color: var(--led); }
+      .data-cell.hot .val { color: var(--led-red); }
+
+      /* title plate */
+      .plate {
+        display: flex; align-items: center; gap: 12px;
+        background: var(--machine-black);
+        border-radius: 14px;
+        padding: 8px 14px;
+        border: 2px solid rgba(242,183,5,.6);
+        margin-bottom: 10px;
+        position: relative;
+      }
+      .plate .mascot-mini { width: 52px; height: 52px; flex: none; }
+      .plate h1 {
+        margin: 0; font-size: clamp(22px, 5.4vw, 32px); font-weight: 800; letter-spacing: .04em;
+        color: #fff; line-height: 1.05;
+      }
+      .plate h1 .gold { color: var(--gold); }
+      .plate .sub { font-size: 11px; color: #f6d47c; font-weight: 700; letter-spacing: .18em; margin-top: 2px; }
+      .bonus-lamp {
+        margin-left: auto; flex: none;
+        font-weight: 800; font-size: 12px; letter-spacing: .08em;
+        color: #7a6a55; background: #2c2622; border: 2px solid #4a4038;
+        padding: 8px 10px; border-radius: 999px; text-align: center; line-height: 1.25;
+        transition: all .2s;
+      }
+      .bonus-lamp.on {
+        color: #fff; background: var(--accent); border-color: var(--gold);
+        box-shadow: 0 0 18px rgba(255, 60, 60, .8), 0 0 4px rgba(242,183,5,.9);
+        animation: lampblink .5s steps(2) infinite;
+      }
+      @keyframes lampblink { 50% { filter: brightness(1.35); } }
+
+      /* LCD message screen */
+      .lcd {
+        background: #0d1f16;
+        border: 3px solid #0a0a0a;
+        border-radius: 12px;
+        min-height: 64px;
+        display: flex; align-items: center; gap: 12px;
+        padding: 8px 14px;
+        margin-bottom: 12px;
+        box-shadow: inset 0 0 24px rgba(0,0,0,.7);
+        position: relative;
+      }
+      .lcd .face { width: 46px; height: 46px; flex: none; transition: transform .25s; }
+      .lcd .face.jump { animation: hop .5s ease infinite alternate; }
+      @keyframes hop { from { transform: translateY(0); } to { transform: translateY(-7px); } }
+      .lcd .msg { color: #a9f5c6; font-weight: 800; font-size: clamp(15px, 3.8vw, 19px); line-height: 1.35; text-shadow: 0 0 8px rgba(90, 255, 160, .45); }
+      .lcd .msg small { display: block; font-size: 12px; color: #6fd598; font-weight: 700; }
+      .lcd.fever { background: #2b0d12; }
+      .lcd.fever .msg { color: #ffd9d2; text-shadow: 0 0 10px rgba(255, 90, 70, .6); }
+      .lcd.fever .msg small { color: #ffab9e; }
+
+      /* reel window */
+      .reel-frame {
+        background: linear-gradient(180deg, #3a3636, #141212);
+        border-radius: 16px;
+        padding: 10px;
+        position: relative;
+        box-shadow: inset 0 0 0 3px rgba(242,183,5,.5), inset 0 10px 24px rgba(0,0,0,.6);
+      }
+      .reels {
+        display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px;
+        position: relative;
+      }
+      .reel-window {
+        --cell: clamp(64px, 17.5vw, 88px);
+        height: calc(var(--cell) * 3);
+        background: var(--reel-bg);
+        border-radius: 10px;
+        overflow: hidden;
+        position: relative;
+        box-shadow: inset 0 14px 18px rgba(0,0,0,.28), inset 0 -14px 18px rgba(0,0,0,.28);
+      }
+      .reel-strip { position: absolute; left: 0; right: 0; top: 0; will-change: transform; }
+      .reel-strip .sym {
+        height: var(--cell);
+        display: flex; align-items: center; justify-content: center;
+        border-bottom: 1px solid rgba(0,0,0,.06);
+      }
+      .reel-window.spinning .sym { filter: blur(1.1px) saturate(1.1); }
+      .reel-window.stopped-flash { animation: stopflash .28s ease; }
+      @keyframes stopflash { 0% { filter: brightness(1.5); } 100% { filter: brightness(1); } }
+      .sym svg { width: 82%; height: 82%; max-width: 74px; max-height: 74px; }
+      .sym .tile {
+        font-weight: 800; text-align: center; line-height: 1;
+        display: flex; align-items: center; justify-content: center;
+        width: 82%; height: 72%; border-radius: 8px;
+      }
+      .tile-bar { background: #191919; color: #fff; font-size: clamp(17px, 4.6vw, 26px); letter-spacing: .14em; border: 2px solid #fff; box-shadow: 0 0 0 2px #191919; }
+      .tile-replay { background: #1663b8; color: #fff; font-size: clamp(10px, 2.8vw, 14px); letter-spacing: .06em; flex-direction: column; gap: 1px; border: 2px solid #bcd9ff; }
+      .tile-replay .arw { font-size: clamp(18px, 5vw, 28px); line-height: .9; }
+      /* payline markers */
+      .paylines { position: absolute; inset: 0; pointer-events: none; }
+      .payline {
+        position: absolute; left: -4px; right: -4px; height: 4px; border-radius: 2px;
+        background: var(--gold); box-shadow: 0 0 12px var(--gold);
+        opacity: 0; transition: opacity .15s;
+      }
+      .payline.show { opacity: .95; animation: lampblink .4s steps(2) infinite; }
+      /* win glow over reels */
+      .reel-frame.bigwin { animation: frameflash .45s steps(2) 6; }
+      @keyframes frameflash {
+        0% { box-shadow: inset 0 0 0 3px rgba(242,183,5,.5), 0 0 0 0 rgba(242,183,5,0); }
+        50% { box-shadow: inset 0 0 0 3px #ffe27a, 0 0 34px 6px rgba(242,183,5,.75); }
+      }
+      .fever-banner {
+        position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%) rotate(-4deg) scale(.6);
+        background: var(--accent); color: #fff; font-weight: 800; font-size: clamp(20px, 6vw, 34px);
+        padding: 8px 22px; border-radius: 12px; border: 3px solid var(--gold);
+        box-shadow: 0 10px 30px rgba(0,0,0,.45);
+        opacity: 0; pointer-events: none; white-space: nowrap; z-index: 5;
+      }
+      .fever-banner.pop { animation: popbanner 1.5s ease forwards; }
+      @keyframes popbanner {
+        0% { opacity: 0; transform: translate(-50%,-50%) rotate(-4deg) scale(.6); }
+        18% { opacity: 1; transform: translate(-50%,-50%) rotate(-4deg) scale(1.08); }
+        30% { transform: translate(-50%,-50%) rotate(-4deg) scale(1); }
+        80% { opacity: 1; }
+        100% { opacity: 0; transform: translate(-50%,-56%) rotate(-4deg) scale(1); }
+      }
+
+      /* credit / payout LEDs */
+      .led-row {
+        display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px;
+        margin: 12px 0 4px; position: relative;
+      }
+      .led-box { background: var(--led-bg); border-radius: 10px; padding: 6px 10px 8px; border: 2px solid rgba(0,0,0,.55); box-shadow: inset 0 0 14px rgba(0,0,0,.8); }
+      .led-box .lab { font-size: 10px; font-weight: 800; letter-spacing: .16em; color: #d8b25c; }
+      .led-box .num { font-family: "Share Tech Mono", monospace; font-size: clamp(24px, 6vw, 32px); color: var(--led); text-align: right; line-height: 1.05; }
+      .led-box.pay .num { color: var(--led-green); }
+      .led-box.bet .num { color: var(--led-red); }
+
+      /* controls */
+      .controls { position: relative; margin-top: 10px; }
+      .stop-row {
+        display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; padding: 0 10px;
+      }
+      .stop-btn {
+        appearance: none; border: none; cursor: pointer;
+        height: 58px; border-radius: 50% / 60%;
+        background: radial-gradient(circle at 35% 30%, #6ec1ff, #1663b8 65%, #0d3f78);
+        box-shadow: 0 5px 0 #082c57, 0 8px 14px rgba(0,0,0,.4), inset 0 2px 3px rgba(255,255,255,.5);
+        color: #fff; font-family: inherit; font-weight: 800; font-size: 13px; letter-spacing: .1em;
+        opacity: .45; transition: transform .05s, box-shadow .05s, opacity .15s, filter .15s;
+      }
+      .stop-btn.live { opacity: 1; animation: stopglow .7s ease-in-out infinite alternate; }
+      @keyframes stopglow { from { filter: brightness(1); } to { filter: brightness(1.3); } }
+      .stop-btn.live:active, .stop-btn.pressed { transform: translateY(4px); box-shadow: 0 1px 0 #082c57, 0 3px 6px rgba(0,0,0,.4); }
+      .stop-btn:disabled { cursor: default; }
+      .btn-row {
+        display: flex; gap: 8px; margin-top: 14px; flex-wrap: wrap;
+      }
+      .ctl-btn {
+        appearance: none; border: none; cursor: pointer; font-family: inherit;
+        font-weight: 800; border-radius: 12px; padding: 12px 10px; font-size: 14px;
+        transition: transform .05s, filter .15s;
+      }
+      .ctl-btn:active { transform: translateY(2px); }
+      .bet-btn { background: linear-gradient(180deg, #ffd94d, var(--gold) 55%, var(--gold-deep)); color: #4a3200; box-shadow: 0 4px 0 #8a6103, 0 6px 12px rgba(0,0,0,.35); flex: 1 1 30%; }
+      .maxbet-btn { background: linear-gradient(180deg, #ff8a5c, #e2541e 55%, #b23c10); color: #fff; box-shadow: 0 4px 0 #6f2507, 0 6px 12px rgba(0,0,0,.35); flex: 1 1 30%; }
+      .start-btn {
+        background: linear-gradient(180deg, #ff5b4d, var(--accent) 55%, var(--machine-dark));
+        color: #fff; font-size: 18px; letter-spacing: .12em;
+        box-shadow: 0 5px 0 #5f0714, 0 8px 16px rgba(0,0,0,.4), inset 0 2px 3px rgba(255,255,255,.4);
+        flex: 2 1 40%;
+      }
+      .start-btn:disabled { filter: grayscale(.5) brightness(.75); }
+      .start-btn.ready { animation: startpulse 1s ease-in-out infinite alternate; }
+      @keyframes startpulse { from { filter: brightness(1); } to { filter: brightness(1.22); } }
+      .sub-row { display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap; }
+      .mini-btn {
+        appearance: none; cursor: pointer; font-family: inherit; font-weight: 700; font-size: 12.5px;
+        background: rgba(0,0,0,.35); color: #ffe9b0; border: 1.5px solid rgba(242,183,5,.55);
+        border-radius: 999px; padding: 8px 14px;
+      }
+      .mini-btn:active { transform: translateY(1px); }
+      .mini-btn.warn { color: #fff; background: var(--accent); border-color: var(--gold); animation: lampblink .5s steps(2) infinite; }
+
+      /* medal shower */
+      .medal-fx { position: absolute; inset: 0; pointer-events: none; overflow: hidden; z-index: 8; }
+      .coin {
+        position: absolute; top: -30px; width: 22px; height: 22px; border-radius: 50%;
+        background: radial-gradient(circle at 35% 30%, #ffe98a, var(--gold) 60%, var(--gold-deep));
+        border: 2px solid #a97a02;
+        animation: coinfail linear forwards;
+      }
+      @keyframes coinfail { to { transform: translateY(560px) rotate(560deg); opacity: .9; } }
+
+      /* ============ SIDE PANELS ============ */
+      .side { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+      .card {
+        background: var(--panel); border: 1.5px solid var(--panel-line); border-radius: 16px;
+        padding: 16px 18px; box-shadow: 0 6px 18px rgba(60,30,10,.07);
+      }
+      .card h2 { margin: 0 0 10px; font-size: 17px; font-weight: 800; display: flex; align-items: center; gap: 8px; }
+      .card h2 .dot { width: 10px; height: 10px; border-radius: 3px; background: var(--accent); flex: none; }
+      .card p, .card li { font-size: 14px; line-height: 1.75; color: var(--ink); }
+      .card ul { margin: 6px 0; padding-left: 20px; }
+      .card .small { font-size: 12.5px; color: var(--ink-soft); line-height: 1.7; }
+
+      table.paytable { width: 100%; border-collapse: collapse; font-size: 14px; }
+      table.paytable th, table.paytable td { padding: 7px 6px; border-bottom: 1px solid var(--panel-line); text-align: left; vertical-align: middle; }
+      table.paytable th { font-size: 12px; letter-spacing: .08em; color: var(--ink-soft); }
+      table.paytable td.pts { text-align: right; font-weight: 800; font-variant-numeric: tabular-nums; white-space: nowrap; }
+      table.paytable th.pts { text-align: right; }
+      .sym-cell { display: flex; align-items: center; gap: 8px; font-weight: 700; }
+      .sym-cell .mini-sym { width: 34px; height: 34px; flex: none; display: flex; align-items: center; justify-content: center; }
+      .sym-cell .mini-sym svg { width: 100%; height: 100%; }
+      .sym-cell .mini-sym .tile { width: 100%; height: 88%; font-size: 10px; border-radius: 5px; display: flex; align-items: center; justify-content: center; font-weight: 800; }
+      .sym-cell .mini-sym .tile-bar { font-size: 10px; }
+      .sym-cell .mini-sym .tile-replay { font-size: 7.5px; }
+      .sym-cell .mini-sym .tile-replay .arw { font-size: 13px; }
+      tr.bonus-row td { background: rgba(200, 16, 46, .07); }
+
+      .stats-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+      .stat { background: var(--hall); border-radius: 12px; padding: 10px 8px; text-align: center; }
+      @media (prefers-color-scheme: dark) { .stat { background: #191410; } }
+      .stat .v { font-size: 20px; font-weight: 800; font-variant-numeric: tabular-nums; }
+      .stat .k { font-size: 11px; color: var(--ink-soft); font-weight: 700; letter-spacing: .06em; margin-top: 2px; }
+
+      .log { list-style: none; margin: 0; padding: 0; }
+      .log li {
+        display: flex; justify-content: space-between; gap: 10px;
+        padding: 7px 2px; border-bottom: 1px dashed var(--panel-line); font-size: 13.5px;
+      }
+      .log li:last-child { border-bottom: none; }
+      .log .g { color: var(--ink-soft); font-variant-numeric: tabular-nums; white-space: nowrap; }
+      .log .p { font-weight: 800; white-space: nowrap; }
+      .log li.big .nm { color: var(--accent); font-weight: 800; }
+      .log-empty { font-size: 13.5px; color: var(--ink-soft); }
+
+      .kbd { display: inline-block; background: var(--machine-black); color: #ffe9b0; border-radius: 5px; padding: 1px 7px; font-size: 12px; font-weight: 700; }
+      @media (prefers-reduced-motion: reduce) {
+        .lcd .face.jump, .bonus-lamp.on, .payline.show, .start-btn.ready, .stop-btn.live { animation: none; }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <!-- ================= MACHINE ================= -->
+      <section class="machine" id="machine" aria-label="くまモンパチスロ台">
+        <div class="data-lamp">
+          <div class="data-cell"><div class="lab">BIG</div><div class="val" id="dBig">0</div></div>
+          <div class="data-cell"><div class="lab">REG</div><div class="val" id="dReg">0</div></div>
+          <div class="data-cell"><div class="lab">総ゲーム数</div><div class="val" id="dGames">0</div></div>
+          <div class="data-cell" id="sinceCell"><div class="lab">ボーナス間</div><div class="val" id="dSince">0</div></div>
+        </div>
+
+        <div class="plate">
+          <span class="mascot-mini" data-kuma></span>
+          <div>
+            <h1>くまモン<span class="gold">パチスロ</span></h1>
+            <div class="sub">KUMAMON SLOT 〜熊本名物そろえ〜</div>
+          </div>
+          <div class="bonus-lamp" id="bonusLamp">BONUS<br />ランプ</div>
+        </div>
+
+        <div class="lcd" id="lcd">
+          <span class="face" id="lcdFace" data-kuma></span>
+          <div class="msg" id="lcdMsg">レバーを押してスタート！<small>BETボタンを押すとそのまま回り始めるモン</small></div>
+        </div>
+
+        <div class="reel-frame" id="reelFrame">
+          <div class="reels" id="reels">
+            <div class="reel-window" data-reel="0"><div class="reel-strip"></div></div>
+            <div class="reel-window" data-reel="1"><div class="reel-strip"></div></div>
+            <div class="reel-window" data-reel="2"><div class="reel-strip"></div></div>
+            <div class="paylines" id="paylines"></div>
+          </div>
+          <div class="fever-banner" id="banner"></div>
+          <div class="medal-fx" id="medalFx"></div>
+        </div>
+
+        <div class="led-row">
+          <div class="led-box"><div class="lab">CREDIT（持ちメダル）</div><div class="num" id="ledCredit">100</div></div>
+          <div class="led-box bet"><div class="lab">BET</div><div class="num" id="ledBet">0</div></div>
+          <div class="led-box pay"><div class="lab">PAYOUT</div><div class="num" id="ledPay">0</div></div>
+        </div>
+
+        <div class="controls">
+          <div class="stop-row">
+            <button class="stop-btn" id="stop0" type="button">STOP<br />1</button>
+            <button class="stop-btn" id="stop1" type="button">STOP<br />2</button>
+            <button class="stop-btn" id="stop2" type="button">STOP<br />3</button>
+          </div>
+          <div class="btn-row">
+            <button class="ctl-btn bet-btn" id="betBtn" type="button">BET（1枚ずつ）</button>
+            <button class="ctl-btn maxbet-btn" id="maxBetBtn" type="button">MAX BET（3枚）</button>
+            <button class="ctl-btn start-btn ready" id="startBtn" type="button">▶ レバー</button>
+          </div>
+          <div class="sub-row">
+            <button class="mini-btn" id="loanBtn" type="button">メダルを借りる（+100枚）</button>
+            <button class="mini-btn" id="soundBtn" type="button">サウンド：ON</button>
+            <button class="mini-btn" id="resetBtn" type="button">データリセット</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- ================= SIDE ================= -->
+      <div class="side">
+        <section class="card">
+          <h2><span class="dot"></span>遊び方</h2>
+          <ul>
+            <li><b>BET</b>でメダルを賭けて、<b>レバー</b>でリールを回すモン。賭けた枚数で有効ラインが増える（1枚=中段のみ／2枚=3ライン／3枚=5ライン）。</li>
+            <li>リールは自分で止めるのがパチスロ。<b>STOPボタン</b>（またはリールをタップ）で1つずつ止めてね。狙った絵柄は近くにあれば少しすべって引き込まれるよ。</li>
+            <li><b>くまモン×3</b>でBIGボーナス、<b>BAR×3</b>でREGボーナス。ボーナス後は10ゲーム間「くまモンタイム」で小役が出やすくなるモン！</li>
+            <li>チェリーは左リールに出るだけでOK。リプレイがそろえば次のゲームは無料。</li>
+          </ul>
+          <p class="small">キーボード：<span class="kbd">Space</span> レバー ／ <span class="kbd">1</span><span class="kbd">2</span><span class="kbd">3</span> や <span class="kbd">J</span><span class="kbd">K</span><span class="kbd">L</span> ストップ ／ <span class="kbd">B</span> BET</p>
+        </section>
+
+        <section class="card">
+          <h2><span class="dot"></span>配当表（3枚掛け・1ラインあたり）</h2>
+          <table class="paytable">
+            <thead><tr><th>役</th><th class="pts">払い出し</th></tr></thead>
+            <tbody id="paytableBody"></tbody>
+          </table>
+          <p class="small">※ チェリーはライン不問（左リールの窓内に出れば成立）。リプレイは次ゲーム無料。BIG後は「くまモンタイム」10G突入。</p>
+        </section>
+
+        <section class="card">
+          <h2><span class="dot"></span>データ</h2>
+          <div class="stats-grid">
+            <div class="stat"><div class="v" id="stGames">0</div><div class="k">総ゲーム数</div></div>
+            <div class="stat"><div class="v" id="stProb">—</div><div class="k">ボーナス合算</div></div>
+            <div class="stat"><div class="v" id="stDiff">0</div><div class="k">差枚数</div></div>
+            <div class="stat"><div class="v" id="stIn">0</div><div class="k">総投入</div></div>
+            <div class="stat"><div class="v" id="stOut">0</div><div class="k">総払い出し</div></div>
+            <div class="stat"><div class="v" id="stLoan">0</div><div class="k">借りたメダル</div></div>
+          </div>
+        </section>
+
+        <section class="card">
+          <h2><span class="dot"></span>当たり履歴</h2>
+          <ul class="log" id="winLog"></ul>
+          <p class="log-empty" id="logEmpty">まだ当たりはないモン。回してそろえてみて！</p>
+        </section>
+      </div>
+    </div>
+    <script>
+      "use strict";
+      /* ================= 絵柄 ================= */
+      var KUMA_SVG = '<svg viewBox="0 0 100 100" aria-hidden="true">'
+        + '<circle cx="20" cy="18" r="13" fill="#1b1b1b"/><circle cx="80" cy="18" r="13" fill="#1b1b1b"/>'
+        + '<circle cx="20" cy="18" r="6.5" fill="#3d3d3d"/><circle cx="80" cy="18" r="6.5" fill="#3d3d3d"/>'
+        + '<circle cx="50" cy="54" r="42" fill="#1b1b1b"/>'
+        + '<ellipse cx="50" cy="15" rx="17" ry="7" fill="#fff"/>'
+        + '<ellipse cx="36" cy="48" rx="6.4" ry="9" fill="#fff"/><ellipse cx="64" cy="48" rx="6.4" ry="9" fill="#fff"/>'
+        + '<circle class="kp" cx="36" cy="50" r="3.4" fill="#111"/><circle class="kp" cx="64" cy="50" r="3.4" fill="#111"/>'
+        + '<circle cx="13" cy="62" r="8.5" fill="#e0231c"/><circle cx="87" cy="62" r="8.5" fill="#e0231c"/>'
+        + '<ellipse cx="50" cy="66" rx="13" ry="9.5" fill="#fff"/>'
+        + '<path d="M44 62 Q50 66 56 62 Q54 70 50 70 Q46 70 44 62Z" fill="#111"/>'
+        + '<path d="M41 73 Q50 79 59 73" stroke="#111" stroke-width="2.4" fill="none" stroke-linecap="round"/>'
+        + '</svg>';
+      var BELL_SVG = '<svg viewBox="0 0 100 100" aria-hidden="true">'
+        + '<path d="M50 14 a10 10 0 0 1 10 10 h-20 a10 10 0 0 1 10 -10Z" fill="#c98f04"/>'
+        + '<path d="M50 26 c14 0 22 12 22 28 l5 14 H23 l5 -14 c0 -16 8 -28 22 -28Z" fill="#f2b705" stroke="#c98f04" stroke-width="3"/>'
+        + '<rect x="20" y="66" width="60" height="7" rx="3.5" fill="#c98f04"/>'
+        + '<circle cx="50" cy="84" r="7" fill="#c98f04"/></svg>';
+      var SUIKA_SVG = '<svg viewBox="0 0 100 100" aria-hidden="true">'
+        + '<path d="M10 38 A44 44 0 0 0 90 38 Z" fill="#1d9e4b"/>'
+        + '<path d="M16 38 A38 38 0 0 0 84 38 Z" fill="#eaf7ec"/>'
+        + '<path d="M21 38 A33 33 0 0 0 79 38 Z" fill="#e8372a"/>'
+        + '<g fill="#26221f"><ellipse cx="38" cy="52" rx="2.6" ry="4"/><ellipse cx="50" cy="60" rx="2.6" ry="4"/><ellipse cx="62" cy="52" rx="2.6" ry="4"/><ellipse cx="44" cy="44" rx="2.4" ry="3.6"/><ellipse cx="56" cy="44" rx="2.4" ry="3.6"/></g></svg>';
+      var CHERRY_SVG = '<svg viewBox="0 0 100 100" aria-hidden="true">'
+        + '<path d="M38 44 Q44 18 72 12" stroke="#2e8b3a" stroke-width="4.5" fill="none" stroke-linecap="round"/>'
+        + '<path d="M60 20 Q76 6 88 16 Q78 30 62 28Z" fill="#46b455"/>'
+        + '<path d="M66 30 Q60 44 54 58" stroke="#2e8b3a" stroke-width="4" fill="none" stroke-linecap="round"/>'
+        + '<circle cx="34" cy="66" r="17" fill="#d92338"/><circle cx="52" cy="76" r="14" fill="#e8314a"/>'
+        + '<circle cx="28" cy="60" r="5" fill="#ffb3ba" opacity=".8"/><circle cx="47" cy="70" r="4" fill="#ffb3ba" opacity=".8"/></svg>';
+      var TOMATO_SVG = '<svg viewBox="0 0 100 100" aria-hidden="true">'
+        + '<circle cx="50" cy="58" r="34" fill="#e03a24"/>'
+        + '<ellipse cx="38" cy="46" rx="10" ry="7" fill="#ff8a76" opacity=".65"/>'
+        + '<path d="M50 26 L55 16 L59 26 L70 20 L64 31 L74 34 L62 38 L64 50 L55 41 L50 52 L45 41 L36 50 L38 38 L26 34 L36 31 L30 20 L41 26 L45 16 Z" fill="#2e9e4f"/></svg>';
+
+      var SYMS = {
+        kuma:   { name: "くまモン", html: KUMA_SVG },
+        bar:    { name: "BAR",      html: '<div class="tile tile-bar">BAR</div>' },
+        bell:   { name: "ベル",     html: BELL_SVG },
+        suika:  { name: "スイカ",   html: SUIKA_SVG },
+        tomato: { name: "トマト",   html: TOMATO_SVG },
+        cherry: { name: "チェリー", html: CHERRY_SVG },
+        replay: { name: "リプレイ", html: '<div class="tile tile-replay"><span class="arw">↻</span><span>REPLAY</span></div>' }
+      };
+      /* リール配列（20コマ・上から順） */
+      var STRIPS = [
+        ["bell","suika","replay","tomato","cherry","bell","bar","suika","replay","bell","tomato","kuma","cherry","suika","bell","replay","tomato","bar","cherry","bell"],
+        ["suika","bell","cherry","replay","kuma","tomato","bell","suika","bar","cherry","replay","bell","tomato","suika","cherry","bell","replay","tomato","bar","suika"],
+        ["tomato","replay","bell","suika","cherry","bar","bell","tomato","replay","suika","bell","cherry","kuma","tomato","suika","replay","bell","cherry","bar","tomato"]
+      ];
+      var COPIES = 3, LEN = 20;
+
+      /* ライン定義: bet -> ライン(各リールの行 0=上,1=中,2=下) */
+      var LINES = {
+        1: [[1,1,1]],
+        2: [[0,0,0],[1,1,1],[2,2,2]],
+        3: [[0,0,0],[1,1,1],[2,2,2],[0,1,2],[2,1,0]]
+      };
+      var LINE_Y = { "0,0,0": 0, "1,1,1": 1, "2,2,2": 2, "0,1,2": 3, "2,1,0": 4 };
+
+      /* 払い出し */
+      var PAY = {
+        kuma:   { pts: 0,   label: "BIGボーナス", bonus: "big" },
+        bar:    { pts: 0,   label: "REGボーナス", bonus: "reg" },
+        bell:   { pts: 10,  label: "ベル" },
+        suika:  { pts: 6,   label: "スイカ" },
+        tomato: { pts: 5,   label: "トマト" },
+        replay: { pts: 0,   label: "リプレイ", replay: true }
+      };
+      var CHERRY_PTS = 3;
+      var BIG_PTS = 345, REG_PTS = 120;
+
+      /* ================= 状態 ================= */
+      var S = {
+        credit: 100, bet: 0, payout: 0,
+        spinning: false, freeGame: false,
+        fever: 0, /* くまモンタイム残りG */
+        games: 0, sinceBonus: 0, big: 0, reg: 0,
+        totalIn: 0, totalOut: 0, loan: 0,
+        sound: true
+      };
+      var plan = null; /* 当該ゲームの抽選結果 */
+
+      /* ================= DOM ================= */
+      function $(id) { return document.getElementById(id); }
+      var reelEls = [], stripEls = [];
+      var cellH = 76;
+
+      function buildReels() {
+        var wins = document.querySelectorAll(".reel-window");
+        for (var i = 0; i < 3; i++) {
+          reelEls.push(wins[i]);
+          var strip = wins[i].querySelector(".reel-strip");
+          stripEls.push(strip);
+          var html = "";
+          for (var c = 0; c < COPIES; c++) {
+            for (var k = 0; k < LEN; k++) {
+              html += '<div class="sym">' + SYMS[STRIPS[i][k]].html + '</div>';
+            }
+          }
+          strip.innerHTML = html;
+        }
+        /* payline overlays */
+        var pl = $("paylines"), lh = "";
+        var rows = [[0,0,0],[1,1,1],[2,2,2],[0,1,2],[2,1,0]];
+        for (var j = 0; j < rows.length; j++) {
+          lh += '<div class="payline" data-line="' + rows[j].join(",") + '"></div>';
+        }
+        pl.innerHTML = lh;
+        measure();
+      }
+      function measure() {
+        if (reelEls[0]) cellH = reelEls[0].clientHeight / 3 || 76;
+        positionPaylines();
+        renderAllReels();
+      }
+      function positionPaylines() {
+        var lines = document.querySelectorAll(".payline");
+        var h = cellH;
+        var tops = { "0,0,0": h * 0.5, "1,1,1": h * 1.5, "2,2,2": h * 2.5, "0,1,2": h * 1.5, "2,1,0": h * 1.5 };
+        var rots = { "0,1,2": 0, "2,1,0": 0 };
+        for (var i = 0; i < lines.length; i++) {
+          var key = lines[i].getAttribute("data-line");
+          lines[i].style.top = (tops[key] - 2) + "px";
+          if (key === "0,1,2") lines[i].style.transform = "rotate(24deg) scaleX(1.12)";
+          if (key === "2,1,0") lines[i].style.transform = "rotate(-24deg) scaleX(1.12)";
+        }
+      }
+
+      /* リール状態 */
+      var reels = [
+        { pos: 3,  speed: 0, mode: "idle", from: 0, to: 0, t0: 0, dur: 0 },
+        { pos: 7,  speed: 0, mode: "idle", from: 0, to: 0, t0: 0, dur: 0 },
+        { pos: 12, speed: 0, mode: "idle", from: 0, to: 0, t0: 0, dur: 0 }
+      ];
+      function renderReel(i) {
+        var p = ((reels[i].pos % LEN) + LEN) % LEN;
+        stripEls[i].style.transform = "translateY(" + (-(p + LEN) * cellH) + "px)";
+      }
+      function renderAllReels() { for (var i = 0; i < 3; i++) renderReel(i); }
+      function topIndex(i) { return Math.round(reels[i].pos); }
+      function shownSym(i, row) { return STRIPS[i][(topIndex(i) + row) % LEN]; }
+
+      /* ================= サウンド ================= */
+      var AC = null;
+      function ac() {
+        if (!AC) { try { AC = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) { AC = null; } }
+        if (AC && AC.state === "suspended") AC.resume();
+        return AC;
+      }
+      function tone(freq, dur, type, vol, when) {
+        if (!S.sound) return;
+        var ctx = ac(); if (!ctx) return;
+        var t = ctx.currentTime + (when || 0);
+        var o = ctx.createOscillator(), g = ctx.createGain();
+        o.type = type || "square"; o.frequency.value = freq;
+        g.gain.setValueAtTime(vol || 0.05, t);
+        g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+        o.connect(g); g.connect(ctx.destination);
+        o.start(t); o.stop(t + dur + 0.02);
+      }
+      function sndBet() { tone(880, 0.07, "square", 0.045); tone(1320, 0.09, "square", 0.04, 0.06); }
+      function sndLever() { tone(220, 0.08, "sawtooth", 0.05); tone(140, 0.12, "sawtooth", 0.05, 0.07); }
+      function sndStop() { tone(180, 0.06, "square", 0.07); tone(90, 0.09, "square", 0.06, 0.02); }
+      function sndCoin(n) { for (var i = 0; i < Math.min(n, 14); i++) { tone(1560, 0.06, "square", 0.035, i * 0.055); tone(2090, 0.09, "square", 0.03, i * 0.055 + 0.03); } }
+      function sndReach() { var f = [660, 740, 830, 990]; for (var i = 0; i < f.length; i++) tone(f[i], 0.13, "square", 0.05, i * 0.11); }
+      function sndJingle() { var f = [523, 659, 784, 1046, 784, 1046]; for (var i = 0; i < f.length; i++) tone(f[i], 0.16, "triangle", 0.07, i * 0.1); }
+      function sndFanfare() {
+        var f = [523, 523, 523, 659, 784, 1046, 784, 1046, 1318, 1568];
+        for (var i = 0; i < f.length; i++) tone(f[i], 0.22, "square", 0.055, i * 0.13);
+        var g = [392, 494, 587, 784];
+        for (var j = 0; j < g.length; j++) tone(g[j], 0.3, "triangle", 0.05, j * 0.26);
+      }
+      function sndMiss() { tone(330, 0.12, "triangle", 0.04); tone(262, 0.16, "triangle", 0.04, 0.1); }
+
+      /* ================= LCD / 表示 ================= */
+      function lcd(main, sub, feverOn) {
+        $("lcdMsg").innerHTML = main + (sub ? "<small>" + sub + "</small>" : "");
+        $("lcd").classList.toggle("fever", !!feverOn || S.fever > 0);
+      }
+      function faceMood(mood) {
+        var f = $("lcdFace");
+        f.classList.toggle("jump", mood === "happy" || mood === "reach");
+      }
+      function banner(text) {
+        var b = $("banner");
+        b.textContent = text;
+        b.classList.remove("pop"); void b.offsetWidth; b.classList.add("pop");
+      }
+      function updateLED() {
+        $("ledCredit").textContent = S.credit;
+        $("ledBet").textContent = S.bet;
+        $("ledPay").textContent = S.payout;
+        $("dBig").textContent = S.big;
+        $("dReg").textContent = S.reg;
+        $("dGames").textContent = S.games;
+        $("dSince").textContent = S.sinceBonus;
+        $("sinceCell").classList.toggle("hot", S.sinceBonus >= 100);
+        $("stGames").textContent = S.games;
+        var total = S.big + S.reg;
+        $("stProb").textContent = total > 0 ? "1/" + Math.round(S.games / total) : "—";
+        $("stDiff").textContent = (S.totalOut - S.totalIn > 0 ? "+" : "") + (S.totalOut - S.totalIn);
+        $("stIn").textContent = S.totalIn;
+        $("stOut").textContent = S.totalOut;
+        $("stLoan").textContent = S.loan;
+        $("bonusLamp").classList.toggle("on", S.fever > 0);
+        $("bonusLamp").innerHTML = S.fever > 0 ? "くまモン<br />タイム " + S.fever + "G" : "BONUS<br />ランプ";
+        $("startBtn").disabled = S.spinning;
+        $("startBtn").classList.toggle("ready", !S.spinning);
+        $("loanBtn").classList.toggle("warn", S.credit < 3 && !S.spinning);
+      }
+      function addLog(label, pts, isBig) {
+        $("logEmpty").style.display = "none";
+        var li = document.createElement("li");
+        if (isBig) li.className = "big";
+        li.innerHTML = '<span class="g">' + S.games + 'G</span><span class="nm">' + label + '</span><span class="p">+' + pts + '枚</span>';
+        var log = $("winLog");
+        log.insertBefore(li, log.firstChild);
+        while (log.children.length > 12) log.removeChild(log.lastChild);
+      }
+      function coinShower(n) {
+        var fx = $("medalFx");
+        for (var i = 0; i < n; i++) {
+          var c = document.createElement("div");
+          c.className = "coin";
+          c.style.left = (4 + Math.random() * 92) + "%";
+          c.style.animationDuration = (0.7 + Math.random() * 0.8) + "s";
+          c.style.animationDelay = (Math.random() * 0.5) + "s";
+          fx.appendChild(c);
+          (function (el) { setTimeout(function () { el.remove(); }, 2400); })(c);
+        }
+      }
+
+      /* ================= 内部抽選 ================= */
+      function drawPlan() {
+        var fever = S.fever > 0;
+        var r = Math.random();
+        var pBig = fever ? 0.030 : 0.014;
+        var pReg = fever ? 0.024 : 0.011;
+        var pBell = fever ? 0.20 : 0.125;
+        var pSuika = 0.055, pTomato = 0.06, pCherry = 0.10, pReplay = 0.135;
+        var acc = 0;
+        acc += pBig;    if (r < acc) return { type: "win", sym: "kuma" };
+        acc += pReg;    if (r < acc) return { type: "win", sym: "bar" };
+        acc += pBell;   if (r < acc) return { type: "win", sym: "bell" };
+        acc += pSuika;  if (r < acc) return { type: "win", sym: "suika" };
+        acc += pTomato; if (r < acc) return { type: "win", sym: "tomato" };
+        acc += pReplay; if (r < acc) return { type: "win", sym: "replay" };
+        acc += pCherry; if (r < acc) return { type: "cherry" };
+        if (Math.random() < 0.30) {
+          var reachSyms = ["kuma", "bar", "bell", "suika"];
+          return { type: "reach", sym: reachSyms[Math.floor(Math.random() * reachSyms.length)] };
+        }
+        return { type: "lose" };
+      }
+      function activeLines() { return LINES[S.bet] || LINES[1]; }
+
+      /* 停止位置の決定: plan とラインから各リールの top インデックスを返す */
+      function decideStops() {
+        var lines = activeLines();
+        if (plan.type === "win") {
+          var line = lines[Math.floor(Math.random() * lines.length)];
+          plan.winLine = line;
+          var stops = [];
+          for (var i = 0; i < 3; i++) stops.push(findIndexWith(i, plan.sym, line[i]));
+          return stops;
+        }
+        if (plan.type === "cherry") {
+          plan.winLine = null;
+          for (var t = 0; t < 60; t++) {
+            var s2 = [randStopWith(0, "cherry"), randStop(), randStop()];
+            if (!anyLineWin(s2)) return s2;
+            if (t === 59) return s2;
+          }
+        }
+        if (plan.type === "reach") {
+          var line2 = lines[Math.floor(Math.random() * lines.length)];
+          plan.winLine = line2;
+          for (var t2 = 0; t2 < 60; t2++) {
+            var third = pickReachThird(plan.sym, line2[2]);
+            var s3 = [findIndexWith(0, plan.sym, line2[0]), findIndexWith(1, plan.sym, line2[1]), third];
+            if (!anyLineWin(s3) && !hasCherryAt(s3)) return s3;
+          }
+          return [randStop(), randStop(), randStop()];
+        }
+        /* lose */
+        for (var t3 = 0; t3 < 80; t3++) {
+          var s4 = [randStop(), randStop(), randStop()];
+          if (!anyLineWin(s4) && !hasCherryAt(s4)) {
+            if (Math.random() < 0.5 || !anyReach(s4)) return s4;
+          }
+        }
+        return [randStop(), randStop(), randStop()];
+      }
+      function randStop() { return Math.floor(Math.random() * LEN); }
+      function randStopWith(reel, sym) {
+        var candidates = [];
+        for (var top = 0; top < LEN; top++) {
+          for (var row = 0; row < 3; row++) if (STRIPS[reel][(top + row) % LEN] === sym) { candidates.push(top); break; }
+        }
+        return candidates[Math.floor(Math.random() * candidates.length)];
+      }
+      function findIndexWith(reel, sym, row) {
+        for (var k = 0; k < LEN; k++) {
+          var idx = (k - row + LEN * 2) % LEN;
+          if (STRIPS[reel][k] === sym && symAt(reel, idx, row) === sym) return idx;
+        }
+        for (var k2 = 0; k2 < LEN; k2++) if (STRIPS[reel][k2] === sym) return (k2 - row + LEN * 2) % LEN;
+        return 0;
+      }
+      function symAt(reel, top, row) { return STRIPS[reel][(top + row) % LEN]; }
+      function pickReachThird(sym, row) {
+        /* ライン上は別絵柄、ただしラインのすぐ上下に sym が見える「あと少し」位置を優先 */
+        var good = [], ok = [];
+        for (var top = 0; top < LEN; top++) {
+          if (symAt(2, top, row) === sym) continue;
+          var near = symAt(2, top, (row + 2) % 3) === sym || symAt(2, top, (row + 1) % 3) === sym;
+          var adjacent = STRIPS[2][(top + row + 1) % LEN] === sym || STRIPS[2][(top + row + LEN - 1) % LEN] === sym;
+          if (adjacent) good.push(top); else ok.push(top);
+        }
+        var pool = good.length ? good : ok;
+        return pool[Math.floor(Math.random() * pool.length)];
+      }
+      function evalStops(stops) {
+        var lines = activeLines();
+        var wins = [];
+        for (var li = 0; li < lines.length; li++) {
+          var L = lines[li];
+          var a = symAt(0, stops[0], L[0]), b = symAt(1, stops[1], L[1]), c = symAt(2, stops[2], L[2]);
+          if (a === b && b === c && PAY[a]) wins.push({ sym: a, line: L });
+        }
+        var cherry = false;
+        for (var row = 0; row < 3; row++) if (symAt(0, stops[0], row) === "cherry") cherry = true;
+        return { wins: wins, cherry: cherry };
+      }
+      function anyLineWin(stops) { return evalStops(stops).wins.length > 0; }
+      function hasCherryAt(stops) { return evalStops(stops).cherry; }
+      function anyReach(stops) {
+        var lines = activeLines();
+        for (var li = 0; li < lines.length; li++) {
+          var L = lines[li];
+          var a = symAt(0, stops[0], L[0]), b = symAt(1, stops[1], L[1]), c = symAt(2, stops[2], L[2]);
+          var cnt = 0;
+          if (a === b) cnt = 2; if (b === c) cnt = Math.max(cnt, 2); if (a === c) cnt = Math.max(cnt, 2);
+          if (cnt === 2) return true;
+        }
+        return false;
+      }
+
+      /* ================= 回転エンジン ================= */
+      var plannedStops = null, stoppedCount = 0, reachAnnounced = false;
+      var lastTime = 0;
+      function loop(ts) {
+        var dt = Math.min(0.05, (ts - lastTime) / 1000 || 0.016);
+        lastTime = ts;
+        var anyActive = false;
+        for (var i = 0; i < 3; i++) {
+          var r = reels[i];
+          if (r.mode === "spin") {
+            r.pos += 30 * dt;
+            anyActive = true; renderReel(i);
+          } else if (r.mode === "stop") {
+            var t = (ts - r.t0) / r.dur;
+            if (t >= 1) {
+              r.pos = r.to; r.mode = "idle";
+              onReelStopped(i);
+            } else {
+              var e = 1 - Math.pow(1 - t, 3);
+              r.pos = r.from + (r.to - r.from) * e;
+            }
+            anyActive = true; renderReel(i);
+          }
+        }
+        if (anyActive || S.spinning) requestAnimationFrame(loop);
+        else lastTime = 0;
+      }
+      function kickLoop() { if (!lastTime) { lastTime = performance.now(); requestAnimationFrame(loop); } }
+
+      function startSpin() {
+        if (S.spinning) return;
+        if (S.bet === 0) {
+          if (S.freeGame) { /* 無料ゲームはベット不要で開始 */ }
+          else { doBet(3, true); if (S.bet === 0) return; }
+        }
+        ac();
+        sndLever();
+        plan = drawPlan();
+        plannedStops = decideStops();
+        stoppedCount = 0; reachAnnounced = false;
+        S.spinning = true;
+        S.payout = 0;
+        S.games++; S.sinceBonus++;
+        if (S.fever > 0) S.fever--;
+        hidePaylines();
+        for (var i = 0; i < 3; i++) {
+          reels[i].mode = "spin";
+          reelEls[i].classList.add("spinning");
+          $("stop" + i).classList.add("live");
+          $("stop" + i).disabled = false;
+        }
+        if (S.fever > 0) lcd("くまモンタイム中！あと" + (S.fever + 1) + "G", "小役が出やすいモン。いくモン！");
+        else lcd("いくモン！", "STOPボタンでリールを止めてね");
+        faceMood("normal");
+        updateLED();
+        kickLoop();
+      }
+      function stopReel(i) {
+        var r = reels[i];
+        if (!S.spinning || r.mode !== "spin") return;
+        sndStop();
+        var target = plannedStops[i];
+        var cur = r.pos;
+        var curInt = Math.floor(cur);
+        var curMod = ((curInt % LEN) + LEN) % LEN;
+        var delta = ((target - curMod) % LEN + LEN) % LEN;
+        var F = curInt + delta + LEN; /* 必ず整数位置で止める（最低1周） */
+        var isReachThird = plan && plan.type === "reach" && i === 2;
+        if (isReachThird) F += LEN * 2; /* リーチ時は第3リールをたっぷり回す */
+        r.from = cur; r.to = F;
+        r.t0 = performance.now();
+        r.dur = 300 + (F - cur) * 13 + (isReachThird ? 550 : 0);
+        r.mode = "stop";
+        reelEls[i].classList.remove("spinning");
+        $("stop" + i).classList.remove("live");
+        $("stop" + i).classList.add("pressed");
+        setTimeout(function () { $("stop" + i).classList.remove("pressed"); }, 160);
+      }
+      function onReelStopped(i) {
+        reelEls[i].classList.remove("stopped-flash"); void reelEls[i].offsetWidth;
+        reelEls[i].classList.add("stopped-flash");
+        stoppedCount++;
+        /* リーチ判定: 左・中リールが止まって同一ラインに2つそろい、右がまだ回転中なら */
+        if (!reachAnnounced && plan && (plan.type === "reach" || plan.type === "win")
+            && reels[0].mode === "idle" && reels[1].mode === "idle" && reels[2].mode !== "idle") {
+          var stopsNow = [topIndex(0) % LEN, topIndex(1) % LEN];
+          var L = plan.winLine;
+          if (L && symAt(0, stopsNow[0], L[0]) === plan.sym && symAt(1, stopsNow[1], L[1]) === plan.sym) {
+            reachAnnounced = true;
+            sndReach();
+            showPayline(L);
+            lcd("リーチ！！", plan.sym === "kuma" ? "くまモンまであと1つだモン…！" : "あと1つで" + SYMS[plan.sym].name + "だモン…！");
+            faceMood("reach");
+            banner("リーチ！");
+          }
+        }
+        if (stoppedCount === 3) {
+          S.spinning = false;
+          for (var j = 0; j < 3; j++) $("stop" + j).disabled = true;
+          finishGame();
+        }
+      }
+
+      /* ================= 結果判定 ================= */
+      function finishGame() {
+        var stops = [topIndex(0) % LEN, topIndex(1) % LEN, topIndex(2) % LEN];
+        var res = evalStops(stops);
+        var totalPts = 0, gotReplay = false, bonusKind = null, labels = [];
+        hidePaylines();
+        for (var w = 0; w < res.wins.length; w++) {
+          var win = res.wins[w];
+          showPayline(win.line);
+          if (PAY[win.sym].bonus) { bonusKind = PAY[win.sym].bonus; labels.push(PAY[win.sym].label); }
+          else if (PAY[win.sym].replay) { gotReplay = true; labels.push("リプレイ"); }
+          else { totalPts += PAY[win.sym].pts; labels.push(PAY[win.sym].label); }
+        }
+        if (res.cherry) { totalPts += CHERRY_PTS; labels.push("チェリー"); }
+        if (bonusKind === "big") totalPts += BIG_PTS;
+        if (bonusKind === "reg") totalPts += REG_PTS;
+
+        S.bet = 0;
+        var isFeverGame = false;
+        if (bonusKind) {
+          S.sinceBonus = 0;
+          if (bonusKind === "big") {
+            S.big++; S.fever = 10; isFeverGame = true;
+            banner("BIG BONUS!");
+            $("reelFrame").classList.add("bigwin");
+            setTimeout(function () { $("reelFrame").classList.remove("bigwin"); }, 2900);
+            coinShower(26);
+            sndFanfare();
+            lcd("🎉 BIGボーナス！！ +" + BIG_PTS + "枚", "くまモンタイム10G突入だモン！");
+          } else {
+            S.reg++;
+            coinShower(12);
+            sndFanfare();
+            lcd("REGボーナス！ +" + REG_PTS + "枚", "やったモン！その調子！");
+          }
+          faceMood("happy");
+          addLog(labels.join("＋") || "ボーナス", totalPts, true);
+        } else if (gotReplay) {
+          S.freeGame = true;
+          sndJingle();
+          lcd("リプレイ！次のゲームは無料だモン", "そのままレバーを押してね");
+          faceMood("happy");
+          if (totalPts > 0) addLog(labels.join("＋"), totalPts, false);
+        } else if (totalPts > 0) {
+          sndJingle();
+          if (totalPts >= 10) coinShower(8);
+          lcd(labels.join("＋") + "！ +" + totalPts + "枚", "そろったモン！");
+          faceMood("happy");
+          addLog(labels.join("＋"), totalPts, false);
+        } else {
+          if (reachAnnounced) { lcd("あと少しだったモン…！", "リーチは次につながるモン"); sndMiss(); }
+          else lcd(pickMissMsg(), "また回してみるモン");
+          faceMood("normal");
+        }
+        if (totalPts > 0) {
+          S.payout = totalPts;
+          S.totalOut += totalPts;
+          sndCoin(totalPts);
+          countUpCredit(totalPts);
+        }
+        if (S.freeGame && !S.spinning) { /* リプレイ時はベット表示をREPLAY扱いに */ }
+        updateLED();
+        if (S.credit + S.bet < 3 && totalPts === 0 && !S.freeGame) {
+          lcd("メダルが足りないモン…", "「メダルを借りる」ボタンで+100枚できるモン");
+        }
+      }
+      var missMsgs = ["はずれ…次いくモン！", "残念！熊本城はまだ遠いモン", "ドンマイ！次はそろう予感だモン", "はずれ。深呼吸して、もう一回！", "惜しいモン…流れは来てるモン"];
+      function pickMissMsg() { return missMsgs[Math.floor(Math.random() * missMsgs.length)]; }
+      function countUpCredit(amount) {
+        var step = Math.max(1, Math.round(amount / 24));
+        var left = amount;
+        var iv = setInterval(function () {
+          var add = Math.min(step, left);
+          S.credit += add; left -= add;
+          $("ledCredit").textContent = S.credit;
+          if (left <= 0) { clearInterval(iv); updateLED(); }
+        }, 40);
+      }
+      function showPayline(line) {
+        var key = line.join(",");
+        var els = document.querySelectorAll(".payline");
+        for (var i = 0; i < els.length; i++) {
+          if (els[i].getAttribute("data-line") === key) els[i].classList.add("show");
+        }
+      }
+      function hidePaylines() {
+        var els = document.querySelectorAll(".payline");
+        for (var i = 0; i < els.length; i++) els[i].classList.remove("show");
+      }
+
+      /* ================= BET ================= */
+      function doBet(n, silent) {
+        if (S.spinning) return;
+        if (S.freeGame) { /* リプレイ中はベット不要 */
+          lcd("リプレイ中！ベットなしで回せるモン", "レバーを押してね");
+          return;
+        }
+        if (S.bet >= 3) { if (!silent) lcd("もうMAX BET（3枚）だモン", "レバーでスタート！"); return; }
+        var want = Math.min(3, S.bet + n);
+        var need = want - S.bet;
+        if (S.credit < need) {
+          lcd("メダルが足りないモン…", "「メダルを借りる」で+100枚");
+          tone(160, 0.15, "sawtooth", 0.05);
+          return;
+        }
+        S.credit -= need; S.totalIn += need; S.bet = want;
+        if (!silent) sndBet();
+        lcd("BET " + S.bet + "枚（有効ライン" + (S.bet === 1 ? 1 : S.bet === 2 ? 3 : 5) + "本）", "レバーでスタートだモン！");
+        updateLED();
+      }
+
+      /* ================= 配当表 ================= */
+      function buildPaytable() {
+        var rows = [
+          { sym: "kuma", txt: "くまモン ×3", pts: "BIG " + BIG_PTS + "枚＋フィーバー", bonus: true },
+          { sym: "bar", txt: "BAR ×3", pts: "REG " + REG_PTS + "枚", bonus: true },
+          { sym: "bell", txt: "ベル ×3", pts: "10枚" },
+          { sym: "suika", txt: "スイカ ×3", pts: "6枚" },
+          { sym: "tomato", txt: "トマト ×3", pts: "5枚" },
+          { sym: "cherry", txt: "チェリー（左リール）", pts: CHERRY_PTS + "枚" },
+          { sym: "replay", txt: "リプレイ ×3", pts: "次ゲーム無料" }
+        ];
+        var html = "";
+        for (var i = 0; i < rows.length; i++) {
+          html += '<tr' + (rows[i].bonus ? ' class="bonus-row"' : "") + '><td><span class="sym-cell"><span class="mini-sym">'
+            + SYMS[rows[i].sym].html + '</span>' + rows[i].txt + '</span></td><td class="pts">' + rows[i].pts + '</td></tr>';
+        }
+        $("paytableBody").innerHTML = html;
+      }
+
+      /* ================= イベント ================= */
+      function init() {
+        var faces = document.querySelectorAll("[data-kuma]");
+        for (var i = 0; i < faces.length; i++) faces[i].innerHTML = KUMA_SVG;
+        buildReels();
+        buildPaytable();
+        updateLED();
+        for (var j = 0; j < 3; j++) $("stop" + j).disabled = true;
+
+        $("betBtn").addEventListener("click", function () { ac(); doBet(1); });
+        $("maxBetBtn").addEventListener("click", function () { ac(); doBet(3); });
+        $("startBtn").addEventListener("click", function () {
+          if (S.freeGame) { S.freeGame = false; startSpinFree(); return; }
+          startSpin();
+        });
+        for (var s = 0; s < 3; s++) {
+          (function (idx) {
+            $("stop" + idx).addEventListener("click", function () { stopReel(idx); });
+            reelEls[idx].addEventListener("pointerdown", function () { stopReel(idx); });
+          })(s);
+        }
+        $("loanBtn").addEventListener("click", function () {
+          ac(); S.credit += 100; S.loan += 100; sndCoin(5);
+          lcd("メダルを100枚借りたモン", "取り返していくモン！");
+          updateLED();
+        });
+        $("soundBtn").addEventListener("click", function () {
+          S.sound = !S.sound;
+          this.textContent = S.sound ? "サウンド：ON" : "サウンド：OFF";
+          if (S.sound) { ac(); sndBet(); }
+        });
+        $("resetBtn").addEventListener("click", function () {
+          if (S.spinning) return;
+          S.credit = 100; S.bet = 0; S.payout = 0; S.fever = 0; S.freeGame = false;
+          S.games = 0; S.sinceBonus = 0; S.big = 0; S.reg = 0; S.totalIn = 0; S.totalOut = 0; S.loan = 0;
+          $("winLog").innerHTML = ""; $("logEmpty").style.display = "";
+          lcd("データをリセットしたモン", "メダル100枚から再スタート！");
+          updateLED();
+        });
+        document.addEventListener("keydown", function (e) {
+          if (e.repeat) return;
+          if (e.code === "Space") {
+            e.preventDefault();
+            if (!S.spinning) { if (S.freeGame) { S.freeGame = false; startSpinFree(); } else startSpin(); }
+          } else if (e.key === "1" || e.key === "j" || e.key === "J") stopReel(0);
+          else if (e.key === "2" || e.key === "k" || e.key === "K") stopReel(1);
+          else if (e.key === "3" || e.key === "l" || e.key === "L") stopReel(2);
+          else if (e.key === "b" || e.key === "B") doBet(1);
+        });
+        window.addEventListener("resize", measure);
+      }
+      function startSpinFree() {
+        /* リプレイ: 前回と同じベットで無料スタート */
+        S.bet = 3;
+        $("ledBet").textContent = "RP";
+        startSpinInternal();
+      }
+      /* startSpin を無料対応にラップするため、内部処理を分離 */
+      function startSpinInternal() {
+        ac(); sndLever();
+        plan = drawPlan();
+        plannedStops = decideStops();
+        stoppedCount = 0; reachAnnounced = false;
+        S.spinning = true; S.payout = 0;
+        S.games++; S.sinceBonus++;
+        if (S.fever > 0) S.fever--;
+        hidePaylines();
+        for (var i = 0; i < 3; i++) {
+          reels[i].mode = "spin";
+          reelEls[i].classList.add("spinning");
+          $("stop" + i).classList.add("live");
+          $("stop" + i).disabled = false;
+        }
+        lcd("リプレイ！無料でもう1ゲームだモン", "STOPボタンで止めてね");
+        faceMood("normal");
+        updateLED();
+        $("ledBet").textContent = "RP";
+        kickLoop();
+      }
+      document.addEventListener("DOMContentLoaded", init);
+    </script>
+  </body>
+</html>

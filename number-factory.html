@@ -1,0 +1,998 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="color-scheme" content="dark light" />
+    <link rel="icon" href="data:," />
+    <title>ボール落下・数字工場</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@500;700;800&family=Archivo:wght@600;800;900&display=swap" rel="stylesheet" />
+    <style>
+      :root{
+        --bg:#0d1117;
+        --panel:#161c26;
+        --panel2:#1d2534;
+        --line:#2b3648;
+        --ink:#f2f5fa;
+        --muted:#93a2b8;
+        --amber:#ffb020;
+        --amber2:#ff8a3d;
+        --cyan:#2dd4ff;
+        --pink:#ff5d8f;
+        --green:#3ddc84;
+        --red:#ff5252;
+        --board:#111826;
+        color-scheme: dark;
+      }
+      @media (prefers-color-scheme: light){
+        :root{
+          --bg:#eef1f6;
+          --panel:#ffffff;
+          --panel2:#f3f6fb;
+          --line:#d5dce8;
+          --ink:#16202e;
+          --muted:#5c6c82;
+          --board:#1a2334;
+          color-scheme: light;
+        }
+      }
+      *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+      html,body{margin:0;padding:0}
+      body{
+        background:var(--bg);
+        color:var(--ink);
+        font-family:"M PLUS Rounded 1c","Hiragino Maru Gothic ProN",system-ui,sans-serif;
+        min-height:100vh;
+      }
+      .wrap{max-width:1060px;margin:0 auto;padding:14px 14px 30px}
+      /* ---------- HUD ---------- */
+      .hud{
+        display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:10px;
+      }
+      .stat{
+        background:var(--panel);border:1px solid var(--line);border-radius:12px;
+        padding:8px 12px;min-width:0;
+      }
+      .stat .label{font-size:11px;color:var(--muted);font-weight:700;letter-spacing:.04em}
+      .stat .value{font-family:"Archivo",sans-serif;font-weight:900;font-size:22px;line-height:1.15;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+      .stat .value small{font-size:12px;color:var(--muted);font-weight:700}
+      .stat.score .value{color:var(--amber)}
+      .stat.coins .value{color:#ffd94d}
+      .gauge{height:8px;background:var(--panel2);border-radius:99px;overflow:hidden;margin-top:5px;border:1px solid var(--line)}
+      .gauge>i{display:block;height:100%;width:0%;background:linear-gradient(90deg,var(--amber2),var(--amber));transition:width .25s ease}
+      .gauge.full>i{background:var(--green)}
+      /* ---------- Layout ---------- */
+      .game{display:grid;grid-template-columns:minmax(0,1fr) 288px;gap:12px;align-items:start}
+      @media (max-width:820px){ .game{grid-template-columns:1fr} }
+      .board-card{
+        background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:10px;
+      }
+      .board-head{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:2px 4px 8px}
+      .board-head .ttl{font-weight:800;font-size:15px}
+      .board-head .ttl span{color:var(--muted);font-size:12px;font-weight:700;margin-left:6px}
+      .fever-tag{
+        display:none;font-weight:800;font-size:12px;color:#14100a;background:var(--amber);
+        border-radius:99px;padding:3px 10px;
+      }
+      .fever-tag.on{display:inline-block;animation:pulse .5s infinite alternate}
+      @keyframes pulse{from{transform:scale(1)}to{transform:scale(1.12)}}
+      canvas#board{
+        display:block;width:100%;height:auto;border-radius:12px;background:var(--board);
+        touch-action:none;cursor:crosshair;
+      }
+      .side{display:flex;flex-direction:column;gap:10px}
+      .card{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:14px}
+      .card h3{margin:0 0 8px;font-size:13px;color:var(--muted);letter-spacing:.05em}
+      .drop-btn{
+        width:100%;border:0;border-radius:14px;padding:16px 10px;cursor:pointer;
+        background:var(--amber);color:#1a1206;font-family:inherit;font-weight:800;font-size:19px;
+        box-shadow:0 4px 0 #b97a08;transition:transform .06s, box-shadow .06s, filter .15s;
+      }
+      .drop-btn:active{transform:translateY(3px);box-shadow:0 1px 0 #b97a08}
+      .drop-btn:disabled{filter:grayscale(.7) brightness(.75);cursor:not-allowed;box-shadow:0 4px 0 #555}
+      .drop-hint{font-size:12px;color:var(--muted);text-align:center;margin-top:8px;line-height:1.5}
+      .combo-num{font-family:"Archivo",sans-serif;font-weight:900;font-size:40px;line-height:1;color:var(--cyan)}
+      .combo-num.hot{color:var(--pink)}
+      .combo-row{display:flex;align-items:baseline;gap:10px}
+      .combo-mult{font-family:"Archivo",sans-serif;font-weight:900;font-size:20px;color:var(--amber)}
+      .combo-bar{height:10px;background:var(--panel2);border:1px solid var(--line);border-radius:99px;overflow:hidden;margin-top:8px}
+      .combo-bar>i{display:block;height:100%;width:0%;background:var(--cyan);transition:width .12s}
+      .last-drop{font-size:13px;line-height:1.7}
+      .last-drop b{font-family:"Archivo",sans-serif}
+      .legend{display:grid;grid-template-columns:1fr 1fr;gap:6px 10px;font-size:12.5px;line-height:1.45}
+      .legend .dot{display:inline-block;width:12px;height:12px;border-radius:50%;margin-right:6px;vertical-align:-1px;border:2px solid rgba(255,255,255,.25)}
+      .log{
+        font-size:12.5px;line-height:1.65;color:var(--muted);max-height:132px;overflow:hidden;
+        display:flex;flex-direction:column-reverse;
+      }
+      .log div b{color:var(--ink)}
+      .mini-btn{
+        border:1px solid var(--line);background:var(--panel2);color:var(--ink);
+        font-family:inherit;font-weight:700;font-size:12.5px;border-radius:10px;padding:8px 10px;cursor:pointer;width:100%;
+      }
+      .mini-btn:active{transform:translateY(1px)}
+      /* ---------- Overlay / Shop ---------- */
+      .overlay{
+        position:fixed;inset:0;background:rgba(5,8,13,.72);backdrop-filter:blur(3px);
+        display:none;align-items:center;justify-content:center;padding:16px;z-index:40;
+      }
+      .overlay.open{display:flex}
+      .sheet{
+        background:var(--panel);border:1px solid var(--line);border-radius:20px;
+        max-width:640px;width:100%;max-height:92vh;overflow:auto;padding:22px;
+      }
+      .sheet h2{margin:0 0 4px;font-size:24px;font-weight:800}
+      .sheet .sub{color:var(--muted);font-size:13.5px;line-height:1.6;margin-bottom:14px}
+      .sheet .sub b{color:var(--amber)}
+      .shop-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+      @media (max-width:560px){ .shop-grid{grid-template-columns:1fr} }
+      .item{
+        border:1px solid var(--line);background:var(--panel2);border-radius:14px;padding:12px;
+        display:flex;flex-direction:column;gap:6px;
+      }
+      .item .name{font-weight:800;font-size:15px}
+      .item .desc{font-size:12.5px;color:var(--muted);line-height:1.55;flex:1}
+      .item .buy{
+        border:0;border-radius:10px;padding:10px;cursor:pointer;font-family:inherit;font-weight:800;font-size:14px;
+        background:var(--amber);color:#1a1206;
+      }
+      .item .buy:disabled{background:#4a5468;color:#aeb9c9;cursor:not-allowed}
+      .item .buy.sold{background:var(--green);color:#08240f}
+      .next-btn{
+        width:100%;margin-top:14px;border:0;border-radius:14px;padding:15px;cursor:pointer;
+        background:var(--cyan);color:#06222c;font-family:inherit;font-weight:800;font-size:17px;
+      }
+      .result-big{font-family:"Archivo",sans-serif;font-weight:900;font-size:44px;color:var(--amber);line-height:1.1}
+      .result-rows{font-size:14px;line-height:2}
+      .result-rows b{font-family:"Archivo",sans-serif}
+      .rank{font-family:"Archivo",sans-serif;font-weight:900;font-size:64px;line-height:1;color:var(--pink)}
+      .howto{font-size:13px;color:var(--muted);line-height:1.8}
+      .howto b{color:var(--ink)}
+      @media (max-width:560px){
+        .stat{padding:7px 9px}
+        .stat .value{font-size:17px}
+        .stat .label{font-size:10px}
+      }
+      .toast{
+        position:fixed;left:50%;top:16px;transform:translateX(-50%) translateY(-80px);
+        background:var(--amber);color:#1a1206;font-weight:800;font-size:15px;border-radius:99px;
+        padding:10px 20px;z-index:60;transition:transform .3s cubic-bezier(.2,1.6,.4,1);box-shadow:0 8px 24px rgba(0,0,0,.4);
+        pointer-events:none;white-space:nowrap;
+      }
+      .toast.show{transform:translateX(-50%) translateY(0)}
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <!-- HUD -->
+      <div class="hud">
+        <div class="stat">
+          <div class="label">ラウンド</div>
+          <div class="value" id="hudRound">1</div>
+        </div>
+        <div class="stat score">
+          <div class="label">スコア / ノルマ</div>
+          <div class="value"><span id="hudScore">0</span> <small>/ <span id="hudGoal">0</span></small></div>
+          <div class="gauge" id="goalGauge"><i></i></div>
+        </div>
+        <div class="stat">
+          <div class="label">残りボール</div>
+          <div class="value" id="hudBalls">●●●●●</div>
+        </div>
+        <div class="stat coins">
+          <div class="label">コイン（強化用）</div>
+          <div class="value" id="hudCoins">0</div>
+        </div>
+      </div>
+
+      <div class="game">
+        <!-- Board -->
+        <div class="board-card">
+          <div class="board-head">
+            <div class="ttl">数字工場ライン<span>ボールを落としてペグの数字を量産せよ</span></div>
+            <div class="fever-tag" id="feverTag">🔥 フィーバー ×2</div>
+          </div>
+          <canvas id="board" width="520" height="640"></canvas>
+        </div>
+
+        <!-- Side -->
+        <div class="side">
+          <div class="card">
+            <button class="drop-btn" id="dropBtn">ボールを落とす</button>
+            <div class="drop-hint">上の投入口は左右に動きます。<br />盤面をタップ／クリックでも落とせます（左右キーでも移動）。</div>
+          </div>
+
+          <div class="card">
+            <h3>現在のコンボ</h3>
+            <div class="combo-row">
+              <div class="combo-num" id="comboNum">0</div>
+              <div class="combo-mult" id="comboMult">倍率 ×1.0</div>
+            </div>
+            <div class="combo-bar"><i id="comboBar"></i></div>
+            <div class="drop-hint" style="text-align:left;margin-top:8px">5ヒットごとに倍率 +0.5。20ヒットでフィーバー突入（10秒間スコア2倍）。</div>
+          </div>
+
+          <div class="card">
+            <h3>直近の落下</h3>
+            <div class="last-drop" id="lastDrop">まだ落としていません。最初の1球をどうぞ。</div>
+          </div>
+
+          <div class="card">
+            <h3>ペグの種類</h3>
+            <div class="legend">
+              <div><span class="dot" style="background:#ffb020"></span>通常ペグ（数字ぶん得点／当たるたび数字+1）</div>
+              <div><span class="dot" style="background:#ffd94d"></span>ゴールド（得点5倍）</div>
+              <div><span class="dot" style="background:#ff5d8f"></span>ボム（周囲8ペグも連鎖ヒット）</div>
+              <div><span class="dot" style="background:#2dd4ff"></span>×2ペグ（その落下の倍率+1）</div>
+            </div>
+          </div>
+
+          <div class="card">
+            <h3>工場ログ</h3>
+            <div class="log" id="log"></div>
+          </div>
+
+          <div class="card">
+            <h3>遊び方</h3>
+            <div class="howto">
+              <b>ノルマ</b>をボール切れまでに達成すればラウンドクリア。稼いだコインでショップ強化→次のノルマは跳ね上がる。
+              落下口の下の<b>受け皿倍率</b>（×1〜×5）が最後に掛かるので、中央の×5を狙うのも大事。
+              ペグの数字は当たるたび育つ＝盤面自体がインフレしていく工場です。
+            </div>
+            <div style="height:10px"></div>
+            <button class="mini-btn" id="soundBtn">🔊 サウンド ON</button>
+            <div style="height:8px"></div>
+            <button class="mini-btn" id="resetBtn">最初からやり直す</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Shop overlay -->
+    <div class="overlay" id="shopOverlay">
+      <div class="sheet">
+        <h2 id="shopTitle">ラウンドクリア！</h2>
+        <div class="sub" id="shopSub"></div>
+        <div class="shop-grid" id="shopGrid"></div>
+        <button class="next-btn" id="nextRoundBtn">次のラウンドへ ▶</button>
+      </div>
+    </div>
+
+    <!-- Game over overlay -->
+    <div class="overlay" id="overOverlay">
+      <div class="sheet" style="text-align:center">
+        <h2>ノルマ未達… 工場停止</h2>
+        <div class="rank" id="overRank">C</div>
+        <div class="result-big" id="overScore">0</div>
+        <div class="result-rows" id="overRows"></div>
+        <button class="next-btn" id="retryBtn">もう一度 工場を回す</button>
+      </div>
+    </div>
+
+    <div class="toast" id="toast"></div>
+
+    <script>
+    (function(){
+      "use strict";
+      // ============ helpers ============
+      function fmt(n){
+        n = Math.floor(n);
+        if (n >= 1e12) return (n/1e12).toFixed(2) + "兆";
+        if (n >= 1e8)  return (n/1e8).toFixed(2) + "億";
+        if (n >= 1e4)  return (n/1e4).toFixed(2) + "万";
+        return n.toLocaleString("ja-JP");
+      }
+      function rand(a,b){ return a + Math.random()*(b-a); }
+      function irand(a,b){ return Math.floor(rand(a,b+1)); }
+      function clamp(v,a,b){ return Math.max(a, Math.min(b, v)); }
+
+      // ============ audio ============
+      var AC = null, soundOn = true;
+      function ac(){
+        if (!AC){ try{ AC = new (window.AudioContext||window.webkitAudioContext)(); }catch(e){} }
+        if (AC && AC.state === "suspended") AC.resume();
+        return AC;
+      }
+      function blip(freq, dur, type, vol, slideTo){
+        if (!soundOn) return;
+        var ctx = ac(); if (!ctx) return;
+        var o = ctx.createOscillator(), g = ctx.createGain();
+        o.type = type || "square";
+        o.frequency.setValueAtTime(freq, ctx.currentTime);
+        if (slideTo) o.frequency.exponentialRampToValueAtTime(slideTo, ctx.currentTime + dur);
+        g.gain.setValueAtTime(vol || 0.06, ctx.currentTime);
+        g.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + dur);
+        o.connect(g); g.connect(ctx.destination);
+        o.start(); o.stop(ctx.currentTime + dur);
+      }
+      function hitSound(combo){
+        var step = Math.min(combo, 24);
+        var freq = 340 * Math.pow(2, step/12);
+        blip(freq, 0.09, "square", 0.05);
+      }
+      function goldSound(){ blip(1180,0.12,"triangle",0.08,1760); blip(1760,0.16,"triangle",0.05,2340); }
+      function bombSound(){ blip(160,0.3,"sawtooth",0.1,40); }
+      function binSound(mult){
+        if (mult >= 5){ [523,659,784,1046,1318].forEach(function(f,i){ setTimeout(function(){ blip(f,0.18,"triangle",0.08); }, i*70); }); }
+        else if (mult >= 2){ blip(660,0.14,"triangle",0.07,990); }
+        else blip(330,0.12,"triangle",0.06);
+      }
+      function clearSound(){ [392,523,659,784,1046].forEach(function(f,i){ setTimeout(function(){ blip(f,0.2,"triangle",0.09); }, i*90); }); }
+      function failSound(){ [330,262,196,147].forEach(function(f,i){ setTimeout(function(){ blip(f,0.22,"sawtooth",0.06); }, i*120); }); }
+
+      // ============ game state ============
+      var W = 520, H = 640;
+      var BIN_H = 64;              // bottom bins height
+      var PLAY_H = H - BIN_H;      // peg field bottom
+      var BALL_R = 11;
+      var state = null;
+
+      function goalFor(round){
+        return Math.round(120 * Math.pow(2.05, round-1) + round*40);
+      }
+
+      function buildPegs(round){
+        var pegs = [];
+        var rows = 9;
+        var topY = 120, rowGap = 52;
+        for (var r = 0; r < rows; r++){
+          var y = topY + r * rowGap;
+          var cols = (r % 2 === 0) ? 6 : 5;
+          var gap = W / (cols + 1);
+          for (var c = 0; c < cols; c++){
+            var x = gap * (c + 1) + (r % 2 === 0 ? 0 : gap * 0.0);
+            // base value grows with depth & round
+            var base = irand(1, 3) + Math.floor(r * 0.9) + Math.floor(round * 0.7);
+            pegs.push({
+              x: x, y: y, r: 13,
+              val: base, base: base,
+              type: "normal",
+              flash: 0, scale: 1
+            });
+          }
+        }
+        // sprinkle specials
+        var golds = 3 + Math.floor(round/2);
+        for (var i = 0; i < golds; i++){
+          var p = pegs[irand(0, pegs.length-1)];
+          if (p.type === "normal") p.type = "gold";
+        }
+        var p2 = pegs[irand(4, pegs.length-5)];
+        if (p2) p2.type = "x2";
+        if (round >= 2){
+          var pb = pegs[irand(6, pegs.length-6)];
+          if (pb && pb.type === "normal") pb.type = "bomb";
+        }
+        return pegs;
+      }
+
+      function newGame(){
+        state = {
+          round: 1,
+          score: 0,
+          goal: goalFor(1),
+          ballsLeft: 5,
+          ballsBase: 5,
+          coins: 0,
+          globalMult: 1,
+          comboRate: 0.5,       // mult gained per 5 hits
+          feverUntil: 0,
+          totalScore: 0,
+          totalDrops: 0,
+          maxCombo: 0,
+          maxDrop: 0,
+          roundsCleared: 0,
+          pegs: buildPegs(1),
+          ball: null,
+          dropX: W/2,
+          dropDir: 1,
+          particles: [],
+          floats: [],
+          shake: 0,
+          phase: "play", // play | shop | over
+          lastDropScore: 0,
+          feverBall: false
+        };
+        log("工場が稼働開始。ラウンド1 ノルマ <b>" + fmt(state.goal) + "</b>");
+        updateHUD();
+        renderLastDrop();
+      }
+
+      // ============ DOM ============
+      var canvas = document.getElementById("board");
+      var ctx = canvas.getContext("2d");
+      var dpr = Math.min(window.devicePixelRatio || 1, 2);
+      canvas.width = W * dpr; canvas.height = H * dpr;
+      ctx.scale(dpr, dpr);
+
+      var hudRound = document.getElementById("hudRound"),
+          hudScore = document.getElementById("hudScore"),
+          hudGoal  = document.getElementById("hudGoal"),
+          hudBalls = document.getElementById("hudBalls"),
+          hudCoins = document.getElementById("hudCoins"),
+          gauge    = document.getElementById("goalGauge"),
+          comboNum = document.getElementById("comboNum"),
+          comboMultEl = document.getElementById("comboMult"),
+          comboBar = document.getElementById("comboBar"),
+          feverTag = document.getElementById("feverTag"),
+          dropBtn  = document.getElementById("dropBtn"),
+          lastDropEl = document.getElementById("lastDrop"),
+          logEl = document.getElementById("log"),
+          toastEl = document.getElementById("toast");
+
+      function log(html){
+        var d = document.createElement("div");
+        d.innerHTML = html;
+        logEl.prepend(d);
+        while (logEl.children.length > 7) logEl.removeChild(logEl.lastChild);
+      }
+      var toastTimer = null;
+      function toast(msg){
+        toastEl.textContent = msg;
+        toastEl.classList.add("show");
+        clearTimeout(toastTimer);
+        toastTimer = setTimeout(function(){ toastEl.classList.remove("show"); }, 1900);
+      }
+
+      function ballsDisplay(){
+        var s = "";
+        for (var i = 0; i < state.ballsLeft; i++) s += "●";
+        return s === "" ? "なし" : s;
+      }
+      function updateHUD(){
+        hudRound.textContent = state.round;
+        hudScore.textContent = fmt(state.score);
+        hudGoal.textContent = fmt(state.goal);
+        hudBalls.textContent = ballsDisplay();
+        hudBalls.style.color = state.ballsLeft <= 1 ? "var(--red)" : "";
+        hudBalls.style.fontSize = state.ballsLeft > 8 ? "10px" : "13px";
+        hudBalls.style.letterSpacing = "-2px";
+        hudCoins.textContent = fmt(state.coins);
+        var pct = clamp(state.score / state.goal * 100, 0, 100);
+        gauge.querySelector("i").style.width = pct + "%";
+        gauge.classList.toggle("full", state.score >= state.goal);
+        dropBtn.disabled = !(state.phase === "play" && !state.ball && state.ballsLeft > 0);
+        dropBtn.textContent = state.ball ? "落下中…" : (state.ballsLeft > 0 ? "ボールを落とす（残り" + state.ballsLeft + "）" : "ボール切れ");
+      }
+      function renderLastDrop(){
+        if (state.totalDrops === 0){
+          lastDropEl.innerHTML = "まだ落としていません。最初の1球をどうぞ。";
+          return;
+        }
+        lastDropEl.innerHTML =
+          "前回： <b>" + fmt(state.lastDropScore) + "</b> 点<br>" +
+          "最高コンボ： <b>" + state.maxCombo + "</b> ヒット<br>" +
+          "1球の最高： <b>" + fmt(state.maxDrop) + "</b> 点";
+      }
+
+      // ============ bins ============
+      var BINS = [
+        { mult: 1, color: "#5b6b84", label: "×1" },
+        { mult: 2, color: "#2f9e6e", label: "×2" },
+        { mult: 5, color: "#ffb020", label: "×5" },
+        { mult: 2, color: "#2f9e6e", label: "×2" },
+        { mult: 1, color: "#5b6b84", label: "×1" }
+      ];
+      var BIN_W = W / BINS.length;
+
+      // ============ ball physics ============
+      function dropBall(){
+        if (state.phase !== "play" || state.ball || state.ballsLeft <= 0) return;
+        ac();
+        state.ballsLeft--;
+        state.ball = {
+          x: state.dropX, y: 34,
+          vx: rand(-14, 14), vy: 0,
+          combo: 0, dropScore: 0, bonusMult: 1,
+          feverBall: state.feverBall
+        };
+        if (state.feverBall){
+          state.feverBall = false;
+          log("🌟 フィーバーボール投入！ この落下は全得点 <b>×3</b>");
+        }
+        blip(520, 0.08, "square", 0.05, 760);
+        updateHUD();
+      }
+
+      function gainPoints(peg, basePts, isChain){
+        var b = state.ball; if (!b) return 0;
+        var mult = (1 + Math.floor(b.combo / 5) * state.comboRate) * b.bonusMult;
+        var fever = (performance.now() < state.feverUntil) || b.feverBall;
+        if (b.feverBall) mult *= 3;
+        else if (fever) mult *= 2;
+        var pts = Math.round(basePts * mult * state.globalMult);
+        b.dropScore += pts;
+        state.score += pts;
+        state.totalScore += pts;
+        spawnFloat(peg.x, peg.y - 16, "+" + fmt(pts), pts >= 500 ? "#ffd94d" : (isChain ? "#ff9ec4" : "#ffffff"), pts >= 500 ? 20 : 14);
+        return pts;
+      }
+
+      function hitPeg(peg, isChain, depth){
+        var b = state.ball; if (!b) return;
+        peg.flash = 1;
+        peg.scale = 1.35;
+        b.combo++;
+        if (b.combo > state.maxCombo) state.maxCombo = b.combo;
+
+        var ptsBase = peg.val;
+        if (peg.type === "gold"){ ptsBase = peg.val * 5; goldSound(); burst(peg.x, peg.y, "#ffd94d", 10); }
+        else if (peg.type === "bomb"){
+          bombSound();
+          state.shake = Math.max(state.shake, 7);
+          burst(peg.x, peg.y, "#ff5d8f", 18);
+        } else if (peg.type === "x2"){
+          b.bonusMult += 1;
+          spawnFloat(peg.x, peg.y - 30, "倍率UP ×" + b.bonusMult, "#2dd4ff", 16);
+          blip(880, 0.14, "triangle", 0.08, 1320);
+          burst(peg.x, peg.y, "#2dd4ff", 10);
+        } else {
+          hitSound(b.combo);
+          burst(peg.x, peg.y, "#ffb020", 4);
+        }
+        gainPoints(peg, ptsBase, isChain);
+
+        // peg grows (factory inflation)
+        peg.val += (peg.type === "gold") ? 2 : 1;
+
+        // fever trigger
+        if (b.combo === 20){
+          state.feverUntil = performance.now() + 10000;
+          toast("🔥 フィーバー突入！ 10秒間スコア2倍");
+          log("🔥 <b>フィーバー突入！</b> 10秒間スコア2倍");
+          blip(660,0.3,"sawtooth",0.07,1320);
+        }
+
+        // bomb chain
+        if (peg.type === "bomb" && (depth || 0) < 1){
+          state.pegs.forEach(function(o){
+            if (o === peg) return;
+            var dx = o.x - peg.x, dy = o.y - peg.y;
+            if (dx*dx + dy*dy < 78*78){
+              setTimeout(function(){ if (state.ball) hitPeg(o, true, (depth||0)+1); }, 40);
+            }
+          });
+        }
+        updateComboUI();
+        updateHUD();
+      }
+
+      function updateComboUI(){
+        var b = state.ball;
+        var combo = b ? b.combo : 0;
+        var mult = b ? (1 + Math.floor(combo/5) * state.comboRate) * b.bonusMult : 1;
+        comboNum.textContent = combo;
+        comboNum.classList.toggle("hot", combo >= 15);
+        comboMultEl.textContent = "倍率 ×" + mult.toFixed(1);
+        comboBar.style.width = ((combo % 5) / 5 * 100) + "%";
+        comboBar.style.background = combo >= 20 ? "var(--pink)" : "var(--cyan)";
+      }
+
+      function burst(x, y, color, n){
+        for (var i = 0; i < n; i++){
+          var a = rand(0, Math.PI*2), sp = rand(40, 190);
+          state.particles.push({ x:x, y:y, vx:Math.cos(a)*sp, vy:Math.sin(a)*sp - 40, life:rand(.3,.7), t:0, color:color, r:rand(1.5,3.5) });
+        }
+      }
+      function spawnFloat(x, y, text, color, size){
+        state.floats.push({ x:x+rand(-6,6), y:y, text:text, color:color, size:size, t:0, life:0.9 });
+        if (state.floats.length > 26) state.floats.shift();
+      }
+
+      function endDrop(binIdx){
+        var b = state.ball; if (!b) return;
+        var bin = BINS[binIdx];
+        var before = b.dropScore;
+        var finalPts = Math.round(before * bin.mult);
+        if (bin.mult > 1){
+          state.score += (finalPts - before);
+          state.totalScore += (finalPts - before);
+          spawnFloat(b.x, PLAY_H - 30, "受け皿 ×" + bin.mult + " → " + fmt(finalPts), "#ffd94d", 19);
+        }
+        if (bin.mult >= 5){
+          state.shake = Math.max(state.shake, 9);
+          burst(b.x, PLAY_H, "#ffd94d", 26);
+          log("🎉 中央 <b>×5</b> に命中！ この落下 <b>" + fmt(finalPts) + "</b> 点");
+        }
+        binSound(bin.mult);
+        state.lastDropScore = finalPts;
+        if (finalPts > state.maxDrop) state.maxDrop = finalPts;
+        state.totalDrops++;
+        state.ball = null;
+        comboNum.textContent = "0";
+        comboMultEl.textContent = "倍率 ×1.0";
+        comboBar.style.width = "0%";
+        renderLastDrop();
+        checkRoundEnd();
+        updateHUD();
+      }
+
+      function stepBall(dt){
+        var b = state.ball; if (!b) return;
+        var GRAV = 1500;
+        var sub = 3, sdt = dt / sub;
+        for (var s = 0; s < sub; s++){
+          b.vy += GRAV * sdt;
+          b.x += b.vx * sdt;
+          b.y += b.vy * sdt;
+          // walls
+          if (b.x < BALL_R){ b.x = BALL_R; b.vx = Math.abs(b.vx) * 0.82; }
+          if (b.x > W - BALL_R){ b.x = W - BALL_R; b.vx = -Math.abs(b.vx) * 0.82; }
+          // bin dividers (small pegs at bin borders near bottom)
+          // peg collisions
+          for (var i = 0; i < state.pegs.length; i++){
+            var p = state.pegs[i];
+            var dx = b.x - p.x, dy = b.y - p.y;
+            var rr = BALL_R + p.r;
+            var d2 = dx*dx + dy*dy;
+            if (d2 < rr*rr && d2 > 0.001){
+              var d = Math.sqrt(d2);
+              var nx = dx/d, ny = dy/d;
+              // only register hit when approaching & not recently hit same peg
+              var vn = b.vx*nx + b.vy*ny;
+              if (vn < 0){
+                b.vx -= (1.78) * vn * nx;
+                b.vy -= (1.78) * vn * ny;
+                // push out
+                b.x = p.x + nx * (rr + 0.5);
+                b.y = p.y + ny * (rr + 0.5);
+                // tiny random nudge to avoid dead-vertical loops
+                b.vx += rand(-12, 12);
+                if (!p.cool || performance.now() - p.cool > 90){
+                  p.cool = performance.now();
+                  hitPeg(p, false, 0);
+                }
+              }
+            }
+          }
+          // bin divider pegs
+          for (var k = 1; k < BINS.length; k++){
+            var px = k * BIN_W, py = PLAY_H + 6;
+            var ddx = b.x - px, ddy = b.y - py;
+            var rrr = BALL_R + 5;
+            var dd2 = ddx*ddx + ddy*ddy;
+            if (dd2 < rrr*rrr && dd2 > 0.001){
+              var dd = Math.sqrt(dd2), nnx = ddx/dd, nny = ddy/dd;
+              var vvn = b.vx*nnx + b.vy*nny;
+              if (vvn < 0){
+                b.vx -= 1.8 * vvn * nnx;
+                b.vy -= 1.8 * vvn * nny;
+                b.x = px + nnx*(rrr+0.5); b.y = py + nny*(rrr+0.5);
+              }
+            }
+          }
+          if (b.y > PLAY_H + BIN_H - BALL_R - 2){
+            var idx = clamp(Math.floor(b.x / BIN_W), 0, BINS.length - 1);
+            endDrop(idx);
+            return;
+          }
+        }
+      }
+
+      // ============ round flow ============
+      function checkRoundEnd(){
+        if (state.score >= state.goal){
+          state.roundsCleared++;
+          var over = state.score - state.goal;
+          var coinsEarned = 10 + state.round * 3 + Math.floor(over / Math.max(1,state.goal) * 12);
+          state.coins += coinsEarned;
+          clearSound();
+          state.phase = "shop";
+          openShop(coinsEarned);
+        } else if (state.ballsLeft <= 0 && !state.ball){
+          gameOver();
+        }
+      }
+
+      var SHOP_ITEMS = [
+        { id:"balls",  name:"ボール増産 +1", desc:"毎ラウンドのボールが1個増える。単純に強い、工場の基本増強。", base:14, can:function(){return true;}, apply:function(){ state.ballsBase += 1; } },
+        { id:"mult",   name:"全体倍率 +50%", desc:"すべての得点が1.5倍に。インフレへの一番の近道。", base:22, can:function(){return true;}, apply:function(){ state.globalMult *= 1.5; } },
+        { id:"gold",   name:"ゴールド化 ×3", desc:"通常ペグ3つをゴールドペグ（得点5倍）に作り替える。", base:12, can:function(){ return state.pegs.some(function(p){return p.type==="normal";}); }, apply:function(){ var n=0; var arr = state.pegs.slice().sort(function(){return Math.random()-.5;}); for (var i=0;i<arr.length&&n<3;i++){ if (arr[i].type==="normal"){ arr[i].type="gold"; n++; } } } },
+        { id:"bomb",   name:"ボムペグ設置", desc:"通常ペグ1つをボムペグに。当たると周囲8ペグが連鎖ヒット。", base:16, can:function(){ return state.pegs.some(function(p){return p.type==="normal";}); }, apply:function(){ var arr = state.pegs.filter(function(p){return p.type==="normal";}); if (arr.length) arr[irand(0,arr.length-1)].type = "bomb"; } },
+        { id:"grow",   name:"全ペグ強化 +3", desc:"盤面の全ペグの数字が+3。工場全体が底上げされる。", base:13, can:function(){return true;}, apply:function(){ state.pegs.forEach(function(p){ p.val += 3; }); } },
+        { id:"combo",  name:"コンボ加速", desc:"コンボ倍率の伸びが +0.5 → +0.75 に加速。連打が気持ちよくなる。", base:18, can:function(){ return state.comboRate < 1.5; }, apply:function(){ state.comboRate += 0.25; } },
+        { id:"feverball", name:"フィーバーボール", desc:"次のラウンドの最初の1球が全得点×3。開幕の一撃に全てを賭けろ。", base:10, can:function(){ return !state.feverBall; }, apply:function(){ state.feverBall = true; } },
+        { id:"reroll", name:"盤面リニューアル", desc:"ペグを全て再配置（数字は今のラウンド基準で再生成、強化済みの種類は引き継がない）。", base:6, can:function(){return true;}, apply:function(){ state.pegs = buildPegs(state.round); } }
+      ];
+      var boughtCount = {};
+
+      function openShop(coinsEarned){
+        var ov = document.getElementById("shopOverlay");
+        document.getElementById("shopTitle").textContent = "ラウンド" + state.round + " クリア！";
+        document.getElementById("shopSub").innerHTML =
+          "ノルマ達成で <b>🪙 " + coinsEarned + "</b> 獲得（所持コイン： <b>" + fmt(state.coins) + "</b>）。" +
+          "次のノルマは <b>" + fmt(goalFor(state.round + 1)) + "</b>。強化してから進もう。";
+        var grid = document.getElementById("shopGrid");
+        grid.innerHTML = "";
+        // pick 4 items (reroll always last if included)
+        var pool = SHOP_ITEMS.filter(function(it){ return it.can(); });
+        pool.sort(function(){ return Math.random() - .5; });
+        var picks = pool.slice(0, 4);
+        picks.forEach(function(it){
+          var times = boughtCount[it.id] || 0;
+          var cost = Math.round(it.base * Math.pow(1.45, times));
+          var div = document.createElement("div");
+          div.className = "item";
+          div.innerHTML = "<div class='name'>" + it.name + "</div><div class='desc'>" + it.desc + "</div>";
+          var btn = document.createElement("button");
+          btn.className = "buy";
+          btn.textContent = "🪙 " + cost + " で購入";
+          btn.disabled = state.coins < cost;
+          btn.addEventListener("click", function(){
+            if (state.coins < cost) return;
+            state.coins -= cost;
+            boughtCount[it.id] = times + 1;
+            it.apply();
+            btn.textContent = "✓ 購入済み";
+            btn.classList.add("sold");
+            btn.disabled = true;
+            blip(990, 0.15, "triangle", 0.08, 1480);
+            log("🛒 <b>" + it.name + "</b> を購入");
+            document.getElementById("shopSub").innerHTML =
+              "所持コイン： <b>" + fmt(state.coins) + "</b>。次のノルマは <b>" + fmt(goalFor(state.round + 1)) + "</b>。";
+            updateHUD();
+          });
+          div.appendChild(btn);
+          grid.appendChild(div);
+        });
+        ov.classList.add("open");
+        updateHUD();
+      }
+
+      document.getElementById("nextRoundBtn").addEventListener("click", function(){
+        document.getElementById("shopOverlay").classList.remove("open");
+        state.round++;
+        state.score = 0;
+        state.goal = goalFor(state.round);
+        state.ballsLeft = state.ballsBase;
+        state.phase = "play";
+        // peg values carry over partially: keep grown values but reshuffle specials a bit
+        log("ラウンド" + state.round + " 開始。ノルマ <b>" + fmt(state.goal) + "</b>");
+        toast("ラウンド" + state.round + " 開始！ ノルマ " + fmt(state.goal));
+        blip(587, 0.12, "square", 0.06, 880);
+        updateHUD();
+      });
+
+      function rankFor(rounds, total){
+        if (rounds >= 8) return "S";
+        if (rounds >= 6) return "A";
+        if (rounds >= 4) return "B";
+        if (rounds >= 2) return "C";
+        return "D";
+      }
+      function gameOver(){
+        state.phase = "over";
+        failSound();
+        document.getElementById("overRank").textContent = rankFor(state.roundsCleared, state.totalScore);
+        document.getElementById("overScore").textContent = fmt(state.totalScore);
+        document.getElementById("overRows").innerHTML =
+          "到達ラウンド： <b>" + state.round + "</b>（クリア " + state.roundsCleared + " 回）<br>" +
+          "最高コンボ： <b>" + state.maxCombo + "</b> ヒット<br>" +
+          "1球の最高得点： <b>" + fmt(state.maxDrop) + "</b><br>" +
+          "あと <b>" + fmt(state.goal - state.score) + "</b> 点でクリアでした";
+        document.getElementById("overOverlay").classList.add("open");
+        updateHUD();
+      }
+      document.getElementById("retryBtn").addEventListener("click", function(){
+        document.getElementById("overOverlay").classList.remove("open");
+        boughtCount = {};
+        logEl.innerHTML = "";
+        newGame();
+      });
+      document.getElementById("resetBtn").addEventListener("click", function(){
+        document.getElementById("overOverlay").classList.remove("open");
+        document.getElementById("shopOverlay").classList.remove("open");
+        boughtCount = {};
+        logEl.innerHTML = "";
+        newGame();
+        toast("工場をリセットしました");
+      });
+      document.getElementById("soundBtn").addEventListener("click", function(){
+        soundOn = !soundOn;
+        this.textContent = soundOn ? "🔊 サウンド ON" : "🔇 サウンド OFF";
+        if (soundOn) blip(880, 0.1, "square", 0.06);
+      });
+
+      // ============ input ============
+      dropBtn.addEventListener("click", dropBall);
+      function canvasPos(e){
+        var rect = canvas.getBoundingClientRect();
+        var cx = (e.touches ? e.touches[0].clientX : e.clientX);
+        return (cx - rect.left) / rect.width * W;
+      }
+      canvas.addEventListener("pointermove", function(e){ state.dropX = clamp(canvasPos(e), 24, W - 24); });
+      canvas.addEventListener("pointerdown", function(e){
+        state.dropX = clamp(canvasPos(e), 24, W - 24);
+        dropBall();
+      });
+      var keys = {};
+      window.addEventListener("keydown", function(e){
+        keys[e.key] = true;
+        if (e.key === " "){ e.preventDefault(); dropBall(); }
+      });
+      window.addEventListener("keyup", function(e){ keys[e.key] = false; });
+
+      // ============ render ============
+      var PEG_COLORS = {
+        normal: "#ffb020",
+        gold:   "#ffd94d",
+        bomb:   "#ff5d8f",
+        x2:     "#2dd4ff"
+      };
+      function drawPeg(p){
+        var fever = performance.now() < state.feverUntil;
+        p.flash = Math.max(0, p.flash - 0.06);
+        p.scale += (1 - p.scale) * 0.2;
+        var r = p.r * p.scale;
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, r + p.flash * 7, 0, Math.PI * 2);
+        ctx.fillStyle = PEG_COLORS[p.type] + "";
+        ctx.globalAlpha = 0.16 + p.flash * 0.3;
+        ctx.fill();
+        ctx.globalAlpha = 1;
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, r, 0, Math.PI * 2);
+        var grad = ctx.createRadialGradient(p.x - 4, p.y - 5, 2, p.x, p.y, r);
+        grad.addColorStop(0, "#ffffff");
+        grad.addColorStop(0.25, PEG_COLORS[p.type]);
+        grad.addColorStop(1, "#7a4d05");
+        if (p.type === "gold") grad.addColorStop(1, "#8a6d00");
+        if (p.type === "bomb") grad.addColorStop(1, "#7d1030");
+        if (p.type === "x2") grad.addColorStop(1, "#0c5a75");
+        ctx.fillStyle = grad;
+        ctx.fill();
+        ctx.lineWidth = p.type === "gold" ? 2.5 : 1.5;
+        ctx.strokeStyle = p.type === "gold" ? "#fff3b0" : "rgba(0,0,0,.35)";
+        ctx.stroke();
+        // value text
+        ctx.fillStyle = p.type === "x2" ? "#04222e" : "#221503";
+        ctx.font = "800 " + (p.val >= 100 ? 10 : 12) + "px Archivo, sans-serif";
+        ctx.textAlign = "center"; ctx.textBaseline = "middle";
+        var label = p.type === "x2" ? "×2" : (p.type === "bomb" ? "💣" : String(p.val));
+        if (p.type === "bomb") ctx.font = "11px sans-serif";
+        ctx.fillText(label, p.x, p.y + 0.5);
+        if (fever){ /* subtle */ }
+      }
+
+      function draw(){
+        ctx.save();
+        if (state.shake > 0.3){
+          ctx.translate(rand(-state.shake, state.shake), rand(-state.shake, state.shake));
+          state.shake *= 0.86;
+        } else state.shake = 0;
+        // bg
+        ctx.fillStyle = "#111826";
+        ctx.fillRect(-12, -12, W + 24, H + 24);
+        // subtle grid dots
+        ctx.fillStyle = "rgba(255,255,255,0.04)";
+        for (var gx = 20; gx < W; gx += 26) for (var gy = 90; gy < PLAY_H; gy += 26){
+          ctx.fillRect(gx, gy, 2, 2);
+        }
+        var fever = performance.now() < state.feverUntil;
+        if (fever){
+          ctx.fillStyle = "rgba(255,176,32,0.07)";
+          ctx.fillRect(0, 0, W, PLAY_H);
+        }
+        feverTag.classList.toggle("on", fever);
+
+        // drop guide
+        if (!state.ball && state.phase === "play" && state.ballsLeft > 0){
+          ctx.strokeStyle = "rgba(255,255,255,0.35)";
+          ctx.setLineDash([4, 6]);
+          ctx.beginPath();
+          ctx.moveTo(state.dropX, 52);
+          ctx.lineTo(state.dropX, 108);
+          ctx.stroke();
+          ctx.setLineDash([]);
+          // launcher
+          ctx.fillStyle = "#2dd4ff";
+          ctx.beginPath();
+          ctx.moveTo(state.dropX - 16, 8);
+          ctx.lineTo(state.dropX + 16, 8);
+          ctx.lineTo(state.dropX, 30);
+          ctx.closePath();
+          ctx.fill();
+          ctx.beginPath();
+          ctx.arc(state.dropX, 34, BALL_R, 0, Math.PI * 2);
+          var bg2 = ctx.createRadialGradient(state.dropX - 3, 30, 2, state.dropX, 34, BALL_R);
+          bg2.addColorStop(0, "#fff"); bg2.addColorStop(0.4, "#ffd94d"); bg2.addColorStop(1, "#c47b12");
+          ctx.fillStyle = bg2; ctx.fill();
+        }
+
+        // pegs
+        state.pegs.forEach(drawPeg);
+
+        // bins
+        for (var i = 0; i < BINS.length; i++){
+          var bx = i * BIN_W;
+          ctx.fillStyle = BINS[i].color;
+          ctx.globalAlpha = 0.9;
+          ctx.fillRect(bx + 2, PLAY_H + 14, BIN_W - 4, BIN_H - 18);
+          ctx.globalAlpha = 1;
+          ctx.fillStyle = "#0d1117";
+          ctx.font = "900 19px Archivo, sans-serif";
+          ctx.textAlign = "center"; ctx.textBaseline = "middle";
+          ctx.fillText(BINS[i].label, bx + BIN_W/2, PLAY_H + BIN_H/2 + 4);
+          // divider peg
+          if (i > 0){
+            ctx.beginPath();
+            ctx.arc(bx, PLAY_H + 6, 5, 0, Math.PI * 2);
+            ctx.fillStyle = "#8fa2bd"; ctx.fill();
+          }
+        }
+        ctx.fillStyle = "#232f45";
+        ctx.fillRect(0, PLAY_H, W, 3);
+
+        // ball
+        if (state.ball){
+          var b = state.ball;
+          // trail
+          ctx.beginPath();
+          ctx.arc(b.x, b.y, BALL_R + 5, 0, Math.PI * 2);
+          ctx.fillStyle = b.feverBall ? "rgba(255,93,143,.35)" : "rgba(255,217,77,.22)";
+          ctx.fill();
+          ctx.beginPath();
+          ctx.arc(b.x, b.y, BALL_R, 0, Math.PI * 2);
+          var bgd = ctx.createRadialGradient(b.x - 3, b.y - 4, 2, b.x, b.y, BALL_R);
+          bgd.addColorStop(0, "#ffffff");
+          bgd.addColorStop(0.4, b.feverBall ? "#ff5d8f" : "#ffd94d");
+          bgd.addColorStop(1, b.feverBall ? "#8f1236" : "#c47b12");
+          ctx.fillStyle = bgd; ctx.fill();
+          ctx.lineWidth = 1.5; ctx.strokeStyle = "rgba(0,0,0,.4)"; ctx.stroke();
+        }
+
+        // particles
+        state.particles = state.particles.filter(function(pt){ return pt.t < pt.life; });
+        state.particles.forEach(function(pt){
+          pt.t += 1/60; pt.x += pt.vx/60; pt.y += pt.vy/60; pt.vy += 300/60;
+          ctx.globalAlpha = 1 - pt.t / pt.life;
+          ctx.beginPath(); ctx.arc(pt.x, pt.y, pt.r, 0, Math.PI * 2);
+          ctx.fillStyle = pt.color; ctx.fill();
+        });
+        ctx.globalAlpha = 1;
+
+        // floats
+        state.floats = state.floats.filter(function(f){ return f.t < f.life; });
+        state.floats.forEach(function(f){
+          f.t += 1/60; f.y -= 42/60;
+          ctx.globalAlpha = 1 - (f.t / f.life) * 0.9;
+          ctx.font = "900 " + f.size + "px Archivo, sans-serif";
+          ctx.textAlign = "center"; ctx.textBaseline = "middle";
+          ctx.lineWidth = 3; ctx.strokeStyle = "rgba(10,10,16,.85)";
+          ctx.strokeText(f.text, f.x, f.y);
+          ctx.fillStyle = f.color;
+          ctx.fillText(f.text, f.x, f.y);
+        });
+        ctx.globalAlpha = 1;
+        ctx.restore();
+      }
+
+      // ============ main loop ============
+      var lastT = performance.now();
+      function loop(now){
+        var dt = Math.min((now - lastT) / 1000, 0.033);
+        lastT = now;
+        // launcher auto-sway when idle + keyboard
+        if (!state.ball && state.phase === "play"){
+          if (keys["ArrowLeft"]) state.dropX = clamp(state.dropX - 260 * dt, 24, W - 24);
+          else if (keys["ArrowRight"]) state.dropX = clamp(state.dropX + 260 * dt, 24, W - 24);
+          else {
+            state.dropX += state.dropDir * 46 * dt;
+            if (state.dropX > W - 30) state.dropDir = -1;
+            if (state.dropX < 30) state.dropDir = 1;
+          }
+        }
+        if (state.ball) stepBall(dt);
+        draw();
+        requestAnimationFrame(loop);
+      }
+
+      newGame();
+      updateComboUI();
+      requestAnimationFrame(loop);
+    })();
+    </script>
+  </body>
+</html>
