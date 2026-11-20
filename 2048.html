@@ -1,0 +1,800 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<meta name="color-scheme" content="light dark" />
+<link rel="icon" href="data:," />
+<title>2048ゲーム</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@500;700;800;900&family=Noto+Sans+JP:wght@400;500;700;900&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#faf6ef; --bg2:#f3ede1; --ink:#2b2118; --muted:#8a7d6b;
+    --board:#bbada0; --empty:#cdc1b4; --card:#fffdf8; --card-border:#e8ddd0;
+    --accent:#ed8a33; --red:#e60012; --black:#231815;
+    --shadow:0 10px 30px rgba(90,65,35,.12);
+  }
+  @media (prefers-color-scheme: dark){
+    :root{ --bg:#1a1611; --bg2:#221c15; --ink:#f5efe6; --muted:#a99a88; --board:#4a3f35; --empty:#5a4e42; --card:#2a231c; --card-border:#3d332a; --shadow:0 10px 30px rgba(0,0,0,.35); }
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0}
+  body{font-family:"M PLUS Rounded 1c","Noto Sans JP",system-ui,sans-serif;background:var(--bg);color:var(--ink);min-height:100dvh;-webkit-tap-highlight-color:transparent}
+  .wrap{max-width:540px;margin:0 auto;padding:20px 16px 32px}
+
+  .top{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:12px}
+  .title-block h1{margin:0;font-size:60px;line-height:.95;font-weight:900;letter-spacing:-.04em}
+  .title-block h1 span{color:var(--red)}
+  .title-block p{margin:8px 0 0;font-size:13px;line-height:1.55;color:var(--muted);font-weight:500;max-width:260px}
+  .title-block p b{color:var(--ink)}
+  .scores{display:flex;gap:8px;flex-shrink:0;padding-top:6px}
+  .score-box{background:var(--board);color:#fff;border-radius:12px;padding:8px 12px 9px;min-width:80px;text-align:center;position:relative;overflow:hidden}
+  @media (prefers-color-scheme: dark){.score-box{background:#3d332a}}
+  .score-box.hot{background:var(--red)}
+  .score-box label{display:block;font-size:10.5px;letter-spacing:.06em;font-weight:800;opacity:.8}
+  .score-box strong{display:block;font-size:22px;line-height:1.1;font-weight:900;font-variant-numeric:tabular-nums}
+  .score-add{position:absolute;left:50%;top:22px;transform:translateX(-50%);font-weight:900;font-size:17px;color:#fff;opacity:0;pointer-events:none;white-space:nowrap}
+  .score-add.pop{animation:floatUp .8s ease forwards}
+  @keyframes floatUp{0%{opacity:0;transform:translate(-50%,6px)}20%{opacity:1}100%{opacity:0;transform:translate(-50%,-18px)}}
+
+  /* Mode tabs */
+  .mode-tabs{display:flex;background:var(--card);border:1.5px solid var(--card-border);border-radius:999px;padding:4px;gap:4px;margin-bottom:10px}
+  .mode-tabs button{flex:1;appearance:none;border:0;background:transparent;font-family:inherit;font-weight:900;font-size:13.5px;color:var(--muted);border-radius:999px;padding:9px 4px;cursor:pointer;transition:all .15s}
+  .mode-tabs button.active{background:var(--black);color:#fff;box-shadow:0 3px 10px rgba(0,0,0,.25)}
+  @media (prefers-color-scheme: dark){.mode-tabs button.active{background:#f5efe6;color:#231815}}
+
+  .mode-panel{background:var(--card);border:1px solid var(--card-border);border-radius:14px;padding:12px 14px;margin-bottom:12px;min-height:64px}
+  .mode-panel .mp-head{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
+  .mode-panel .mp-title{font-weight:900;font-size:15px}
+  .mode-panel .mp-sub{font-size:12px;color:var(--muted);font-weight:600;margin-top:2px;line-height:1.5}
+  .mp-badge{font-size:12px;font-weight:900;background:var(--bg2);border:1px solid var(--card-border);border-radius:999px;padding:3px 10px;white-space:nowrap;font-variant-numeric:tabular-nums}
+  .mp-badge.danger{background:#ffe1e1;color:#b0000c;border-color:#ffc9c9;animation:pulse .6s infinite alternate}
+  @keyframes pulse{from{transform:scale(1)}to{transform:scale(1.07)}}
+  .mp-track{height:9px;background:var(--bg2);border:1px solid var(--card-border);border-radius:999px;overflow:hidden;margin-top:9px}
+  .mp-fill{height:100%;border-radius:999px;transition:width .3s ease;width:100%}
+  .mp-fill.time{background:linear-gradient(90deg,#f2b179,#ed8a33)}
+  .mp-fill.time.low{background:var(--red)}
+  .mp-fill.mission{background:linear-gradient(90deg,#7bc96f,#2f9e44)}
+  .mission-dots{display:flex;gap:5px;margin-top:9px;flex-wrap:wrap}
+  .mission-dots i{width:22px;height:8px;border-radius:99px;background:var(--bg2);border:1px solid var(--card-border)}
+  .mission-dots i.done{background:#2f9e44;border-color:#2f9e44}
+  .mission-dots i.now{background:var(--accent);border-color:var(--accent)}
+
+  .toolbar{display:flex;gap:8px;align-items:center;margin-bottom:10px;flex-wrap:wrap}
+  .btn{appearance:none;border:0;cursor:pointer;font-family:inherit;font-weight:800;font-size:14px;border-radius:999px;padding:10px 16px;transition:transform .12s,filter .12s,opacity .12s}
+  .btn:active{transform:scale(.97)}
+  .btn-primary{background:var(--accent);color:#fff;box-shadow:0 4px 14px rgba(237,138,51,.35)}
+  .btn-primary:hover{filter:brightness(1.05)}
+  .btn-ghost{background:var(--card);color:var(--ink);border:1.5px solid var(--card-border)}
+  .btn-ghost:disabled{opacity:.45;cursor:default}
+  .btn-mini{padding:8px 12px;font-size:12.5px}
+  .toolbar .spacer{flex:1}
+
+  /* Items */
+  .items{display:flex;gap:8px;margin-bottom:10px}
+  .item-btn{flex:1;display:flex;align-items:center;gap:10px;background:var(--card);border:1.5px solid var(--card-border);border-radius:14px;padding:10px 12px;cursor:pointer;font-family:inherit;text-align:left;color:var(--ink);transition:all .15s;position:relative}
+  .item-btn:active{transform:scale(.98)}
+  .item-btn:disabled{opacity:.45;cursor:default}
+  .item-btn.armed{border-color:var(--red);background:#fff0f0;box-shadow:0 0 0 3px rgba(230,0,18,.18)}
+  @media (prefers-color-scheme: dark){.item-btn.armed{background:#3a2323}}
+  .item-btn .ic{font-size:24px;line-height:1}
+  .item-btn .tx b{display:block;font-size:13.5px;font-weight:900}
+  .item-btn .tx small{font-size:11px;color:var(--muted);font-weight:600}
+  .item-btn .cnt{margin-left:auto;font-size:12px;font-weight:900;background:var(--black);color:#fff;border-radius:999px;min-width:26px;height:26px;display:flex;align-items:center;justify-content:center;padding:0 6px}
+  @media (prefers-color-scheme: dark){.item-btn .cnt{background:#f5efe6;color:#231815}}
+
+  .streak-bar{display:flex;align-items:center;gap:8px;margin-bottom:10px;font-size:12.5px;font-weight:800;color:var(--muted)}
+  .streak-bar .flames{letter-spacing:2px;font-size:15px;filter:grayscale(1);opacity:.35;transition:all .2s}
+  .streak-bar.on{color:var(--ink)}
+  .streak-bar.on .flames{filter:none;opacity:1}
+  .streak-bar .skin-note{margin-left:auto;font-size:11.5px}
+
+  /* Board */
+  .board-wrap{position:relative}
+  .board{position:relative;background:var(--board);border-radius:18px;padding:12px;aspect-ratio:1/1;box-shadow:var(--shadow);touch-action:none;user-select:none;overflow:hidden}
+  .board.targeting{box-shadow:0 0 0 4px rgba(230,0,18,.55),var(--shadow)}
+  .board.shake{animation:shake .3s ease}
+  @keyframes shake{0%,100%{transform:translateX(0)}25%{transform:translateX(-5px)}50%{transform:translateX(5px)}75%{transform:translateX(-3px)}}
+  .grid-bg{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;height:100%}
+  .cell{background:var(--empty);border-radius:12px}
+  .tile-layer{position:absolute;inset:12px}
+  .tile{position:absolute;width:calc((100% - 36px)/4);height:calc((100% - 36px)/4);border-radius:12px;display:flex;align-items:center;justify-content:center;font-weight:900;transition:left .13s ease,top .13s ease;will-change:left,top;line-height:1;overflow:hidden}
+  .tile.new{animation:appear .18s ease .05s both}
+  .tile.merged{animation:pop .2s ease}
+  @keyframes appear{from{transform:scale(0)}to{transform:scale(1)}}
+  @keyframes pop{0%{transform:scale(1)}45%{transform:scale(1.2)}100%{transform:scale(1)}}
+  .board.targeting .tile{cursor:pointer;animation:targetPulse .7s infinite alternate}
+  @keyframes targetPulse{from{outline:2px solid rgba(230,0,18,0)}to{outline:3px solid rgba(230,0,18,.85)}}
+  .tile[data-v="2"]{background:#eee4da;color:#776e65}
+  .tile[data-v="4"]{background:#ede0c8;color:#776e65}
+  .tile[data-v="8"]{background:#f2b179;color:#fff}
+  .tile[data-v="16"]{background:#f59563;color:#fff}
+  .tile[data-v="32"]{background:#f67c5f;color:#fff}
+  .tile[data-v="64"]{background:#f65e3b;color:#fff}
+  .tile[data-v="128"]{background:#edcf72;color:#fff;box-shadow:0 0 18px rgba(237,207,114,.55)}
+  .tile[data-v="256"]{background:#edcc61;color:#fff;box-shadow:0 0 18px rgba(237,204,97,.55)}
+  .tile[data-v="512"]{background:#edc850;color:#fff;box-shadow:0 0 20px rgba(237,200,80,.6)}
+  .tile[data-v="1024"]{background:#edc53f;color:#fff;box-shadow:0 0 22px rgba(237,197,63,.65)}
+  .tile[data-v="2048"]{background:#edc22e;color:#fff;box-shadow:0 0 28px rgba(237,194,46,.85)}
+  .tile.super{background:#3c3a32;color:#f9f6f2}
+
+  /* Kumamon skin tile inner */
+  .k-inner{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:0;width:100%;height:100%;padding:4px 2px}
+  .k-num{font-size:clamp(11px,3vw,15px);font-weight:900;line-height:1;opacity:.85}
+  .k-icon{font-size:clamp(26px,8.5vw,44px);line-height:1.12}
+  .k-icon svg{width:clamp(30px,9.5vw,50px);height:auto;display:block}
+  .k-name{font-size:clamp(8.5px,2.4vw,11px);font-weight:800;line-height:1.15;text-align:center}
+  .tile.rainbow{background:linear-gradient(135deg,#ff5f6d,#ffc371,#8ee08a,#57b6ff,#b98cff);color:#fff;text-shadow:0 1px 3px rgba(0,0,0,.35)}
+
+  .target-banner{position:absolute;top:10px;left:50%;transform:translateX(-50%);z-index:6;background:var(--red);color:#fff;font-weight:900;font-size:13px;border-radius:999px;padding:7px 14px;display:none;white-space:nowrap;box-shadow:0 6px 18px rgba(230,0,18,.4)}
+  .target-banner.show{display:block}
+  .target-banner button{background:#fff;color:var(--red);border:0;border-radius:999px;font-family:inherit;font-weight:900;font-size:12px;padding:3px 10px;margin-left:8px;cursor:pointer}
+
+  .combo-pop{position:absolute;inset:0;display:none;align-items:center;justify-content:center;z-index:4;pointer-events:none;text-align:center}
+  .combo-pop.show{display:flex}
+  .combo-pop .cp-in{animation:comboIn .8s ease forwards}
+  .combo-pop .cp-big{font-size:clamp(38px,11vw,58px);font-weight:900;color:var(--red);text-shadow:0 3px 0 #fff,0 8px 24px rgba(230,0,18,.35);letter-spacing:-.02em;line-height:1}
+  .combo-pop .cp-sub{font-size:16px;font-weight:900;color:var(--ink);background:rgba(255,255,255,.9);border-radius:999px;padding:3px 14px;display:inline-block;margin-top:8px}
+  @keyframes comboIn{0%{transform:scale(.4) rotate(-6deg);opacity:0}25%{transform:scale(1.15) rotate(2deg);opacity:1}45%{transform:scale(1)}80%{opacity:1}100%{transform:scale(1.05) translateY(-14px);opacity:0}}
+
+  .particle{position:absolute;width:10px;height:10px;border-radius:50%;z-index:3;pointer-events:none;animation:burst .55s ease-out forwards}
+  @keyframes burst{0%{transform:translate(0,0) scale(1);opacity:1}100%{transform:translate(var(--dx),var(--dy)) scale(.3);opacity:0}}
+  .confetti{position:absolute;top:-14px;width:9px;height:14px;z-index:7;pointer-events:none;border-radius:2px;animation:fall linear forwards}
+  @keyframes fall{to{transform:translateY(560px) rotate(720deg);opacity:.9}}
+
+  .overlay{position:absolute;inset:0;border-radius:18px;background:rgba(250,246,239,.86);backdrop-filter:blur(3px);display:none;align-items:center;justify-content:center;text-align:center;padding:24px;z-index:8}
+  @media (prefers-color-scheme: dark){.overlay{background:rgba(20,16,12,.86)}}
+  .overlay.show{display:flex}
+  .overlay h2{margin:0;font-size:36px;font-weight:900;letter-spacing:-.02em}
+  .overlay p{margin:8px 0 18px;color:var(--muted);font-weight:600;font-size:14px;line-height:1.65;white-space:pre-line}
+  .overlay .row{display:flex;gap:8px;justify-content:center;flex-wrap:wrap}
+  .overlay .big-emoji{font-size:54px;line-height:1.2}
+
+  .goalbar{margin-top:14px}
+  .goalbar-head{display:flex;justify-content:space-between;font-size:12px;font-weight:800;color:var(--muted);margin-bottom:6px}
+  .goalbar-track{height:10px;background:var(--bg2);border:1px solid var(--card-border);border-radius:999px;overflow:hidden}
+  .goalbar-fill{height:100%;background:linear-gradient(90deg,#f2b179,#edc22e);border-radius:999px;transition:width .3s ease;width:0%}
+
+  .meta{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:14px}
+  @media(max-width:480px){.meta{grid-template-columns:repeat(2,1fr)}}
+  .meta-card{background:var(--card);border:1px solid var(--card-border);border-radius:14px;padding:11px 13px}
+  .meta-card label{font-size:10.5px;letter-spacing:.05em;font-weight:800;color:var(--muted)}
+  .meta-card strong{display:block;font-size:20px;margin-top:2px;font-variant-numeric:tabular-nums}
+  .meta-card small{color:var(--muted);font-weight:600;font-size:11.5px}
+
+  .evo{margin-top:14px;background:var(--card);border:1px solid var(--card-border);border-radius:16px;padding:14px}
+  .evo h3{margin:0 0 4px;font-size:14px;font-weight:900}
+  .evo p{margin:0 0 10px;font-size:12px;color:var(--muted);font-weight:600;line-height:1.5}
+  .evo-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:7px}
+  @media(min-width:480px){.evo-grid{grid-template-columns:repeat(6,1fr)}}
+  .evo-cell{border:1.5px solid var(--card-border);border-radius:12px;padding:7px 3px 6px;text-align:center;background:var(--bg);opacity:.45;transition:all .25s}
+  .evo-cell .e-icon{font-size:21px;line-height:1.15}
+  .evo-cell .e-icon svg{width:26px;height:auto}
+  .evo-cell .e-name{font-size:9.5px;font-weight:800;line-height:1.2}
+  .evo-cell .e-num{font-size:10px;font-weight:900;color:var(--muted)}
+  .evo-cell.reached{opacity:1;border-color:var(--accent);background:var(--card);box-shadow:0 3px 10px rgba(237,138,51,.18)}
+
+  .howto{margin-top:14px;background:var(--card);border:1px solid var(--card-border);border-radius:16px;padding:16px 16px 14px}
+  .howto h3{margin:0 0 8px;font-size:14px;font-weight:900}
+  .howto ul{margin:0;padding-left:18px;color:var(--muted);font-size:13.5px;line-height:1.8;font-weight:500}
+  .howto ul b{color:var(--ink)}
+  kbd{font-family:inherit;font-size:11px;font-weight:800;background:var(--bg2);border:1px solid var(--card-border);border-bottom-width:2px;border-radius:6px;padding:1px 6px;color:var(--ink)}
+
+  .dpad{margin-top:16px;display:none;grid-template-columns:repeat(3,64px);grid-template-rows:repeat(3,52px);gap:6px;justify-content:center}
+  @media (pointer:coarse){.dpad{display:grid}}
+  .dpad button{border:1.5px solid var(--card-border);background:var(--card);border-radius:12px;font-size:20px;cursor:pointer;color:var(--ink);display:flex;align-items:center;justify-content:center}
+  .dpad button:active{background:var(--bg2);transform:scale(.96)}
+  .dpad .up{grid-column:2;grid-row:1}.dpad .left{grid-column:1;grid-row:2}.dpad .right{grid-column:3;grid-row:2}.dpad .down{grid-column:2;grid-row:3}
+  .dpad .center{grid-column:2;grid-row:2;font-size:11px;font-weight:900;color:var(--muted);letter-spacing:.05em;display:flex;align-items:center;justify-content:center}
+
+  footer{margin-top:18px;text-align:center;font-size:12px;color:var(--muted);font-weight:600}
+  @media(max-width:420px){.title-block h1{font-size:48px}.score-box{min-width:70px;padding:7px 9px}.score-box strong{font-size:19px}.scores{flex-wrap:wrap;justify-content:flex-end}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="top">
+    <div class="title-block">
+      <h1>2048<span>.</span></h1>
+      <p>熊本名物が合体して進化！<br><b>2048＝キングくまモン</b> を作ればクリア！</p>
+    </div>
+    <div class="scores">
+      <div class="score-box">
+        <label>スコア</label>
+        <strong id="score">0</strong>
+        <span class="score-add" id="scoreAdd"></span>
+      </div>
+      <div class="score-box">
+        <label>ベスト</label>
+        <strong id="best">0</strong>
+      </div>
+      <div class="score-box" id="comboBox">
+        <label>最大コンボ</label>
+        <strong id="comboBest">—</strong>
+      </div>
+    </div>
+  </div>
+
+  <div class="mode-tabs" role="tablist" aria-label="ゲームモード">
+    <button id="tabNormal" class="active">🏯 ノーマル</button>
+    <button id="tabTime">⏱️ タイムアタック</button>
+    <button id="tabMission">🎯 ミッション</button>
+  </div>
+
+  <div class="mode-panel" id="modePanel">
+    <div class="mp-head">
+      <div>
+        <div class="mp-title" id="mpTitle">ノーマルモード</div>
+        <div class="mp-sub" id="mpSub">時間制限なし。じっくり2048を目指そう。</div>
+      </div>
+      <span class="mp-badge" id="mpBadge" style="display:none">90</span>
+    </div>
+    <div class="mp-track" id="mpTrack" style="display:none"><div class="mp-fill time" id="mpFill"></div></div>
+    <div class="mission-dots" id="missionDots" style="display:none"></div>
+  </div>
+
+  <div class="toolbar">
+    <button class="btn btn-primary" id="newGameBtn">↻ ニューゲーム</button>
+    <button class="btn btn-ghost" id="undoBtn">← 1手戻す</button>
+    <span class="spacer"></span>
+    <button class="btn btn-ghost btn-mini" id="skinBtn">🎨 スキン：熊本</button>
+    <button class="btn btn-ghost btn-mini" id="soundBtn" aria-label="サウンド切替">🔊 音ON</button>
+  </div>
+
+  <div class="items">
+    <button class="item-btn" id="bombBtn">
+      <span class="ic">💣</span>
+      <span class="tx"><b>1枚消す</b><small>邪魔なタイルをタップで消去</small></span>
+      <span class="cnt" id="bombCnt">3</span>
+    </button>
+    <button class="item-btn" id="shuffleBtn">
+      <span class="ic">🔀</span>
+      <span class="tx"><b>シャッフル</b><small>配置をランダムに入れ替え</small></span>
+      <span class="cnt" id="shuffleCnt">2</span>
+    </button>
+  </div>
+
+  <div class="streak-bar" id="streakBar">
+    <span class="flames">🔥🔥🔥</span>
+    <span id="streakText">連続合体ストリーク：0手</span>
+    <span class="skin-note">1手で2合体以上＝コンボ倍率！</span>
+  </div>
+
+  <div class="board-wrap">
+    <div class="board" id="board" aria-label="2048 ゲームボード">
+      <div class="grid-bg" id="gridBg"></div>
+      <div class="tile-layer" id="tileLayer"></div>
+      <div class="target-banner" id="targetBanner">消したいタイルをタップ！<button id="targetCancel">やめる</button></div>
+      <div class="combo-pop" id="comboPop"><div class="cp-in"><div class="cp-big" id="comboBig">2 COMBO!</div><span class="cp-sub" id="comboSub">スコア ×2</span></div></div>
+      <div class="overlay" id="overlay">
+        <div>
+          <div class="big-emoji" id="overlayEmoji">🎉</div>
+          <h2 id="overlayTitle">ゲームオーバー</h2>
+          <p id="overlayText">もう動かせるマスがありません。</p>
+          <div class="row">
+            <button class="btn btn-primary" id="overlayPrimary">もう一度遊ぶ</button>
+            <button class="btn btn-ghost" id="overlaySecondary" style="display:none">続けて遊ぶ</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="goalbar">
+    <div class="goalbar-head"><span>🏆 キングくまモン（2048）までの進み具合</span><span id="maxTileLabel">2 / 2048</span></div>
+    <div class="goalbar-track"><div class="goalbar-fill" id="goalFill"></div></div>
+  </div>
+
+  <div class="meta">
+    <div class="meta-card"><label>手数</label><strong id="moves">0</strong><small>回 動かしました</small></div>
+    <div class="meta-card"><label>最大タイル</label><strong id="maxTile">2</strong><small>いちばん大きな数字</small></div>
+    <div class="meta-card"><label>空きマス</label><strong id="emptyCount">14</strong><small> / 16 マス</small></div>
+    <div class="meta-card"><label>ストリーク</label><strong id="streakNum">0</strong><small>連続で合体した手数</small></div>
+  </div>
+
+  <div class="evo">
+    <h3>🍅 進化図鑑 — 熊本名物 → くまモン</h3>
+    <p>数字が大きくなるほどタイルが進化。512でくまモン誕生、1024で金冠、2048で虹色のキングくまモン！到達した進化は光ります。</p>
+    <div class="evo-grid" id="evoGrid"></div>
+  </div>
+
+  <div class="howto">
+    <h3>遊び方・新要素</h3>
+    <ul>
+      <li><b>操作：</b>スワイプ / <kbd>↑</kbd><kbd>↓</kbd><kbd>←</kbd><kbd>→</kbd> / <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> / 方向ボタン。同じ数字同士で合体して2倍になります。</li>
+      <li><b>🔥 コンボ：</b>1手で2つ以上合体させるとコンボ！ その手の得点が <b>×2・×3…</b> と倍率アップ。連続で合体させ続けるとストリークが燃え上がります。</li>
+      <li><b>💣 アイテム：</b>「1枚消す」は回数限定で邪魔なタイルを1枚消去。「シャッフル」は配置を入れ替えて詰みかけを打開。ピンチで使おう。</li>
+      <li><b>⏱️ タイムアタック：</b>90秒でハイスコア勝負。最初の1手からカウント開始、コンボで一気に稼ぐのがコツ。</li>
+      <li><b>🎯 ミッション：</b>「128を作れ」「1手で3コンボ」など全8課題を順にクリア。同じ盤面のまま次へ進みます。</li>
+      <li><b>🎨 スキン：</b>熊本・くまモン進化スキンと、シンプルな数字スキンを切り替えできます。</li>
+    </ul>
+  </div>
+
+  <div class="dpad" aria-label="方向ボタン">
+    <button class="up" data-dir="up" aria-label="上">▲</button>
+    <button class="left" data-dir="left" aria-label="左">◀</button>
+    <div class="center">MOVE</div>
+    <button class="right" data-dir="right" aria-label="右">▶</button>
+    <button class="down" data-dir="down" aria-label="下">▼</button>
+  </div>
+
+  <footer>2048 — 数字パズルゲーム 熊本・くまモン進化エディション</footer>
+</div>
+
+<script>
+(function(){
+  var SIZE=4;
+  function $(id){return document.getElementById(id)}
+  var boardEl=$('board'), layer=$('tileLayer'), gridBg=$('gridBg');
+  var scoreEl=$('score'), bestEl=$('best'), scoreAddEl=$('scoreAdd'), comboBestEl=$('comboBest'), comboBox=$('comboBox');
+  var movesEl=$('moves'), maxTileEl=$('maxTile'), emptyEl=$('emptyCount'), streakNumEl=$('streakNum');
+  var maxLabel=$('maxTileLabel'), goalFill=$('goalFill');
+  var overlay=$('overlay'), overlayTitle=$('overlayTitle'), overlayText=$('overlayText'), overlayEmoji=$('overlayEmoji');
+  var overlayPrimary=$('overlayPrimary'), overlaySecondary=$('overlaySecondary');
+  var undoBtn=$('undoBtn'), bombBtn=$('bombBtn'), shuffleBtn=$('shuffleBtn');
+  var bombCnt=$('bombCnt'), shuffleCnt=$('shuffleCnt');
+  var comboPop=$('comboPop'), comboBig=$('comboBig'), comboSub=$('comboSub');
+  var targetBanner=$('targetBanner'), streakBar=$('streakBar'), streakText=$('streakText');
+  var mpTitle=$('mpTitle'), mpSub=$('mpSub'), mpBadge=$('mpBadge'), mpTrack=$('mpTrack'), mpFill=$('mpFill'), missionDots=$('missionDots');
+
+  /* ---------- Kumamon evolution map ---------- */
+  function kumaSVG(crown, rainbow){
+    var crownSVG = crown ? '<path d="M28 10 L34 20 L42 8 L50 20 L58 10 L56 24 L30 24 Z" fill="#f5b301" stroke="#d97706" stroke-width="1.5"/>' : '';
+    return '<svg viewBox="0 0 86 78" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">'
+      + crownSVG
+      + '<circle cx="18" cy="30" r="10" fill="#231815"/><circle cx="68" cy="30" r="10" fill="#231815"/>'
+      + '<ellipse cx="43" cy="48" rx="30" ry="27" fill="#231815"/>'
+      + '<circle cx="33" cy="44" r="5.2" fill="#fff"/><circle cx="53" cy="44" r="5.2" fill="#fff"/>'
+      + '<circle cx="33.8" cy="45" r="2.4" fill="#231815"/><circle cx="53.8" cy="45" r="2.4" fill="#231815"/>'
+      + '<ellipse cx="43" cy="56" rx="6.5" ry="5" fill="#fff"/><path d="M38 57 Q43 61 48 57" stroke="#231815" stroke-width="1.8" fill="none" stroke-linecap="round"/>'
+      + '<circle cx="19" cy="55" r="6.5" fill="#e60012"/><circle cx="67" cy="55" r="6.5" fill="#e60012"/>'
+      + '</svg>';
+  }
+  var EVO = {
+    2:{name:'トマト', icon:'🍅', bg:'#ffe0d1', fg:'#8a2f18'},
+    4:{name:'スイカ', icon:'🍉', bg:'#d9f2c2', fg:'#2e5d1e'},
+    8:{name:'デコポン', icon:'🍊', bg:'#ffe7bd', fg:'#8a5a00'},
+    16:{name:'メロン', icon:'🍈', bg:'#e6f5cf', fg:'#4a6b1f'},
+    32:{name:'いきなり団子', icon:'🍡', bg:'#fdeeda', fg:'#7a4a12'},
+    64:{name:'辛子蓮根', icon:'🪷', bg:'#fff0d6', fg:'#8a5a00'},
+    128:{name:'熊本ラーメン', icon:'🍜', bg:'#ffd9a8', fg:'#7a3b00'},
+    256:{name:'熊本城', icon:'🏯', bg:'#dcd6f7', fg:'#3d2f7a'},
+    512:{name:'ちびくまモン', kuma:true, crown:false, bg:'#4a4038', fg:'#fff'},
+    1024:{name:'くまモン', kuma:true, crown:true, bg:'#edc22e', fg:'#4a3200'},
+    2048:{name:'キングくまモン', kuma:true, crown:true, rainbow:true, bg:'#edc22e', fg:'#fff'}
+  };
+  function evoIconHTML(v, inTile){
+    var e=EVO[v];
+    if(!e) return '🌈';
+    if(e.kuma) return kumaSVG(e.crown, e.rainbow);
+    return e.icon;
+  }
+  // Build evolution chart
+  var evoGrid=$('evoGrid');
+  Object.keys(EVO).map(Number).sort(function(a,b){return a-b}).forEach(function(v){
+    var e=EVO[v];
+    var d=document.createElement('div'); d.className='evo-cell'; d.id='evo-'+v;
+    d.innerHTML='<div class="e-icon">'+evoIconHTML(v,false)+'</div><div class="e-name">'+e.name+'</div><div class="e-num">'+v+'</div>';
+    evoGrid.appendChild(d);
+  });
+
+  /* ---------- Sound (WebAudio, lazy) ---------- */
+  var audioCtx=null, soundOn=true;
+  function beep(freq, dur, delay, type){
+    if(!soundOn) return;
+    try{
+      if(!audioCtx) audioCtx=new (window.AudioContext||window.webkitAudioContext)();
+      if(audioCtx.state==='suspended') audioCtx.resume();
+      var t=audioCtx.currentTime+(delay||0);
+      var o=audioCtx.createOscillator(), g=audioCtx.createGain();
+      o.type=type||'triangle'; o.frequency.setValueAtTime(freq,t);
+      g.gain.setValueAtTime(.14,t); g.gain.exponentialRampToValueAtTime(.001,t+dur);
+      o.connect(g); g.connect(audioCtx.destination); o.start(t); o.stop(t+dur);
+    }catch(e){}
+  }
+  function sndMerge(combo){ beep(340+combo*90,.12,0); if(combo>=2){beep(520+combo*90,.14,.07); beep(760+combo*80,.18,.14);} }
+  function sndWin(){ [523,659,784,1046].forEach(function(f,i){beep(f,.22,i*.11,'triangle')}); }
+  function sndClick(){ beep(220,.06,0,'square'); }
+
+  /* ---------- Missions ---------- */
+  var MISSIONS=[
+    {title:'128を作ろう', desc:'最大タイルを128にする', test:function(s){return s.max>=128}, prog:function(s){return s.max/128}, label:function(s){return s.max+' / 128'}},
+    {title:'スコア1,500を取る', desc:'合計スコア1,500以上', test:function(s){return s.score>=1500}, prog:function(s){return s.score/1500}, label:function(s){return s.score.toLocaleString('ja-JP')+' / 1,500'}},
+    {title:'256を作ろう', desc:'最大タイルを256にする', test:function(s){return s.max>=256}, prog:function(s){return s.max/256}, label:function(s){return s.max+' / 256'}},
+    {title:'1手で3コンボを出す', desc:'1回の移動で3つ同時に合体させる', test:function(s){return s.maxCombo>=3}, prog:function(s){return s.maxCombo/3}, label:function(s){return '最大 '+s.maxCombo+' / 3 コンボ'}},
+    {title:'512を作ろう（くまモン誕生）', desc:'最大タイルを512にする', test:function(s){return s.max>=512}, prog:function(s){return s.max/512}, label:function(s){return s.max+' / 512'}},
+    {title:'スコア5,000を取る', desc:'合計スコア5,000以上', test:function(s){return s.score>=5000}, prog:function(s){return s.score/5000}, label:function(s){return s.score.toLocaleString('ja-JP')+' / 5,000'}},
+    {title:'1024を作ろう（金冠くまモン）', desc:'最大タイルを1024にする', test:function(s){return s.max>=1024}, prog:function(s){return s.max/1024}, label:function(s){return s.max+' / 1024'}},
+    {title:'2048を作ろう（キングくまモン）', desc:'最終ミッション！ 2048に到達', test:function(s){return s.max>=2048}, prog:function(s){return s.max/2048}, label:function(s){return s.max+' / 2048'}}
+  ];
+
+  /* ---------- State ---------- */
+  for(var i=0;i<16;i++){var c=document.createElement('div');c.className='cell';gridBg.appendChild(c);}
+  var tiles=[], nextId=1;
+  var score=0, best=0, moves=0;
+  var history=null, won=false, keepPlaying=false, gameOver=false, animating=false;
+  var mode='normal', skin='kuma';
+  var bombUses=3, shuffleUses=2, targeting=false;
+  var streak=0, maxCombo=0;
+  var missionIndex=0;
+  var timeLeft=90, timerId=null, timeStarted=false;
+  var overlayMode='gameover';
+
+  function emptyCells(){
+    var occ={}; tiles.forEach(function(t){occ[t.r+','+t.c]=true});
+    var list=[]; for(var r=0;r<SIZE;r++)for(var cc=0;cc<SIZE;cc++)if(!occ[r+','+cc])list.push({r:r,c:cc});
+    return list;
+  }
+  function maxTile(){ return tiles.reduce(function(m,t){return Math.max(m,t.value)},0)||0; }
+  function posStyle(r,c){ return { left:'calc('+c+' * ( (100% - 36px)/4 + 12px ))', top:'calc('+r+' * ( (100% - 36px)/4 + 12px ))' }; }
+  function fontSizeFor(v){ var len=String(v).length; if(len<=2)return 'clamp(28px, 11vw, 52px)'; if(len===3)return 'clamp(22px, 8.5vw, 40px)'; return 'clamp(17px, 6.5vw, 32px)'; }
+
+  function tileInner(t){
+    if(skin==='kuma'){
+      var e=EVO[Math.min(t.value,2048)];
+      if(t.value>2048) return '<div class="k-inner"><span class="k-num">'+t.value+'</span><span class="k-icon">🌈'+kumaSVG(true)+'</span><span class="k-name">虹くまモン</span></div>';
+      if(!e) return '<span>'+t.value+'</span>';
+      var icon = e.kuma ? kumaSVG(e.crown) : e.icon;
+      return '<div class="k-inner"><span class="k-num">'+t.value+'</span><span class="k-icon">'+icon+'</span><span class="k-name">'+e.name+'</span></div>';
+    }
+    return '<span>'+t.value+'</span>';
+  }
+  function applyTileStyle(el,t){
+    el.setAttribute('data-v', String(Math.min(t.value,2048)));
+    el.dataset.id=t.id;
+    if(t.value>2048) el.classList.add('super'); else el.classList.remove('super');
+    el.classList.remove('rainbow');
+    if(skin==='kuma'){
+      var e=EVO[Math.min(t.value,2048)];
+      if(t.value>2048){ el.style.background=''; el.classList.add('rainbow'); el.style.color='#fff'; }
+      else if(e){ el.style.background=e.bg; el.style.color=e.fg; if(e.rainbow) el.classList.add('rainbow'); }
+    } else { el.style.background=''; el.style.color=''; el.style.fontSize=fontSizeFor(t.value); }
+    if(skin==='kuma') el.style.fontSize='';
+    el.innerHTML=tileInner(t);
+  }
+  function createTileEl(t){
+    var el=document.createElement('div');
+    el.className='tile'+(t.isNew?' new':'')+(t.merged?' merged':'');
+    var s=posStyle(t.r,t.c); el.style.left=s.left; el.style.top=s.top;
+    applyTileStyle(el,t);
+    return el;
+  }
+  function render(){
+    layer.innerHTML='';
+    tiles.forEach(function(t){ t.el=createTileEl(t); layer.appendChild(t.el); t.isNew=false; t.merged=false; });
+    updateHUD();
+  }
+  function renderPositions(){
+    tiles.forEach(function(t){ if(!t.el)return; var s=posStyle(t.r,t.c); t.el.style.left=s.left; t.el.style.top=s.top; applyTileStyle(t.el,t); });
+    updateHUD();
+  }
+  function statsObj(){ return {max:maxTile(), score:score, maxCombo:maxCombo}; }
+
+  function updateHUD(){
+    scoreEl.textContent=score.toLocaleString('ja-JP');
+    bestEl.textContent=best.toLocaleString('ja-JP');
+    comboBestEl.textContent= maxCombo>0 ? '×'+maxCombo : '—';
+    comboBox.classList.toggle('hot', maxCombo>=3);
+    movesEl.textContent=moves;
+    var max=maxTile();
+    maxTileEl.textContent= max||'—';
+    maxLabel.textContent=(max||0)+' / 2048';
+    var pct= max? Math.min(100, Math.round(Math.log2(max)/11*100)):0; if(max>=2048)pct=100;
+    goalFill.style.width=pct+'%';
+    emptyEl.textContent=emptyCells().length;
+    streakNumEl.textContent=streak;
+    streakText.textContent='連続合体ストリーク：'+streak+'手'+(streak>=3?' — 燃えてる！🔥':'');
+    streakBar.classList.toggle('on', streak>=2);
+    undoBtn.disabled=!history;
+    bombCnt.textContent=bombUses; shuffleCnt.textContent=shuffleUses;
+    bombBtn.disabled= bombUses<=0||targeting||gameOver;
+    shuffleBtn.disabled= shuffleUses<=0||gameOver||animating;
+    bombBtn.classList.toggle('armed', targeting);
+    // evolution chart
+    Object.keys(EVO).forEach(function(k){ var cell=$('evo-'+k); if(cell) cell.classList.toggle('reached', max>=Number(k)); });
+    updateModePanel();
+  }
+
+  function updateModePanel(){
+    if(mode==='normal'){
+      mpTitle.textContent='🏯 ノーマルモード';
+      mpSub.textContent='時間制限なし。じっくり2048＝キングくまモンを目指そう。';
+      mpBadge.style.display='none'; mpTrack.style.display='none'; missionDots.style.display='none';
+    } else if(mode==='time'){
+      mpTitle.textContent='⏱️ タイムアタック — 90秒';
+      mpSub.textContent= timeStarted ? '残り時間内にスコアを伸ばせ！ コンボ倍率が勝負のカギ。' : '最初の1手でカウント開始。90秒でどこまで稼げる？';
+      mpBadge.style.display=''; mpBadge.textContent='残り '+Math.ceil(timeLeft)+'秒';
+      mpBadge.classList.toggle('danger', timeLeft<=10&&timeStarted);
+      mpTrack.style.display=''; mpFill.className='mp-fill time'+(timeLeft<=10?' low':'');
+      mpFill.style.width=Math.max(0,timeLeft/90*100)+'%';
+      missionDots.style.display='none';
+    } else {
+      var m=MISSIONS[missionIndex];
+      if(!m){ mpTitle.textContent='🎯 ミッション全制覇！'; mpSub.textContent='全8ミッションクリア済み。フリーで続けて遊べます。'; mpBadge.style.display='none'; mpTrack.style.display='none'; }
+      else{
+        var s=statsObj();
+        mpTitle.textContent='🎯 ミッション '+(missionIndex+1)+'/8：'+m.title;
+        mpSub.textContent=m.desc;
+        mpBadge.style.display=''; mpBadge.textContent=m.label(s); mpBadge.classList.remove('danger');
+        mpTrack.style.display=''; mpFill.className='mp-fill mission';
+        mpFill.style.width=Math.min(100,Math.max(0,m.prog(s)*100))+'%';
+      }
+      missionDots.style.display='flex'; missionDots.innerHTML='';
+      MISSIONS.forEach(function(_,idx){ var d=document.createElement('i'); if(idx<missionIndex)d.className='done'; else if(idx===missionIndex)d.className='now'; missionDots.appendChild(d); });
+    }
+  }
+
+  function spawn(){
+    var em=emptyCells(); if(!em.length)return;
+    var pick=em[Math.floor(Math.random()*em.length)];
+    tiles.push({id:nextId++, value:Math.random()<0.9?2:4, r:pick.r, c:pick.c, isNew:true, merged:false, el:null});
+  }
+  function snapshot(){ return { tiles:tiles.map(function(t){return {value:t.value,r:t.r,c:t.c}}), score:score, moves:moves, won:won, keepPlaying:keepPlaying, bombUses:bombUses, shuffleUses:shuffleUses, streak:streak, maxCombo:maxCombo }; }
+  function restore(snap){
+    tiles=snap.tiles.map(function(t){return {id:nextId++, value:t.value, r:t.r, c:t.c, isNew:false, merged:false, el:null}});
+    score=snap.score; moves=snap.moves; won=snap.won; keepPlaying=snap.keepPlaying;
+    bombUses=snap.bombUses; shuffleUses=snap.shuffleUses; streak=snap.streak; maxCombo=snap.maxCombo;
+    gameOver=false; setTargeting(false); overlay.classList.remove('show'); render();
+  }
+
+  /* ---------- Timer ---------- */
+  function stopTimer(){ if(timerId){clearInterval(timerId); timerId=null;} }
+  function startTimer(){
+    if(timeStarted) return; timeStarted=true; var end=Date.now()+timeLeft*1000;
+    timerId=setInterval(function(){
+      timeLeft=Math.max(0,(end-Date.now())/1000);
+      updateModePanel();
+      if(timeLeft<=0){ stopTimer(); timeUp(); }
+    },200);
+    updateModePanel();
+  }
+  function timeUp(){
+    if(gameOver) return; gameOver=true; if(score>best)best=score;
+    sndWin();
+    showOverlay('timeup','⏰','タイムアップ！','90秒が終わりました。\nスコア '+score.toLocaleString('ja-JP')+' ・ 最大タイル '+maxTile()+' ・ 最大コンボ ×'+Math.max(maxCombo,1)+'\nコンボを決めるほどスコアが伸びます。もう一回挑戦しよう！','もう一度挑戦', null);
+    updateHUD();
+  }
+
+  /* ---------- Effects ---------- */
+  function burstAt(t, combo){
+    var colors=['#ed8a33','#e60012','#edc22e','#7bc96f','#57b6ff'];
+    var n= combo>=2? 12:7;
+    for(var i=0;i<n;i++){
+      var p=document.createElement('div'); p.className='particle';
+      p.style.background=colors[i%colors.length];
+      p.style.left='calc(12px + '+t.c+' * ((100% - 60px)/4 + 12px) + (100% - 60px)/8)';
+      p.style.top='calc(12px + '+t.r+' * ((100% - 60px)/4 + 12px) + (100% - 60px)/8)';
+      var ang=Math.random()*Math.PI*2, dist=34+Math.random()*44;
+      p.style.setProperty('--dx', Math.cos(ang)*dist+'px'); p.style.setProperty('--dy', Math.sin(ang)*dist+'px');
+      boardEl.appendChild(p);
+      (function(el){ setTimeout(function(){el.remove()},600); })(p);
+    }
+  }
+  function confetti(){
+    var colors=['#e60012','#ed8a33','#edc22e','#2f9e44','#57b6ff','#ff7eb6'];
+    for(var i=0;i<42;i++){
+      var d=document.createElement('div'); d.className='confetti';
+      d.style.left=Math.random()*100+'%'; d.style.background=colors[i%colors.length];
+      d.style.animationDuration=(1.1+Math.random()*1.1)+'s'; d.style.animationDelay=(Math.random()*0.35)+'s';
+      boardEl.appendChild(d);
+      (function(el){ setTimeout(function(){el.remove()},2800); })(d);
+    }
+  }
+  var comboTimer=null;
+  function showCombo(merges, streakNow){
+    comboBig.textContent=merges+' COMBO!';
+    comboSub.textContent='スコア ×'+merges+(streakNow>=3?' ＋ '+streakNow+'手連続🔥':'');
+    comboPop.classList.remove('show'); void comboPop.offsetWidth; comboPop.classList.add('show');
+    if(comboTimer)clearTimeout(comboTimer);
+    comboTimer=setTimeout(function(){comboPop.classList.remove('show')},820);
+    if(merges>=3){ boardEl.classList.remove('shake'); void boardEl.offsetWidth; boardEl.classList.add('shake'); }
+  }
+
+  /* ---------- Game flow ---------- */
+  function newGame(resetMission){
+    stopTimer();
+    tiles=[]; score=0; moves=0; won=false; keepPlaying=false; gameOver=false; history=null; nextId=1;
+    bombUses=3; shuffleUses=2; streak=0; maxCombo=0;
+    timeLeft=90; timeStarted=false;
+    if(resetMission) missionIndex=0;
+    setTargeting(false);
+    overlay.classList.remove('show');
+    spawn(); spawn(); render();
+  }
+  function gridFromTiles(){
+    var g=[]; for(var r=0;r<SIZE;r++)g.push([null,null,null,null]);
+    tiles.forEach(function(t){g[t.r][t.c]=t}); return g;
+  }
+  function canMove(){
+    if(emptyCells().length>0)return true;
+    var g=gridFromTiles();
+    for(var r=0;r<SIZE;r++)for(var c=0;c<SIZE;c++){ var v=g[r][c].value; if(c+1<SIZE&&g[r][c+1].value===v)return true; if(r+1<SIZE&&g[r+1][c].value===v)return true; }
+    return false;
+  }
+
+  function move(dir){
+    if(gameOver||animating||targeting) return;
+    if(overlay.classList.contains('show')) return;
+    var prev=snapshot();
+    var g=gridFromTiles(), moved=false, gained=0, toRemove=[];
+    var lines=[], r,c,i;
+    if(dir==='left'||dir==='right'){ for(r=0;r<SIZE;r++){ var line=[]; for(i=0;i<SIZE;i++){c=dir==='left'?i:SIZE-1-i; line.push({r:r,c:c});} lines.push(line);} }
+    else { for(c=0;c<SIZE;c++){ var line2=[]; for(i=0;i<SIZE;i++){r=dir==='up'?i:SIZE-1-i; line2.push({r:r,c:c});} lines.push(line2);} }
+    lines.forEach(function(line){
+      var inLine=[]; line.forEach(function(pos){var t=g[pos.r][pos.c]; if(t)inLine.push(t);});
+      var result=[], idx=0;
+      while(idx<inLine.length){
+        var cur=inLine[idx], nxt=inLine[idx+1];
+        if(nxt&&nxt.value===cur.value){ cur.value*=2; cur.merged=true; gained+=cur.value; toRemove.push(nxt); idx+=2; result.push(cur); }
+        else { idx+=1; result.push(cur); }
+      }
+      result.forEach(function(t,k){ var target=line[k]; if(t.r!==target.r||t.c!==target.c)moved=true; t.r=target.r; t.c=target.c; });
+      if(result.length!==inLine.length)moved=true;
+      if(toRemove.length)moved=true;
+    });
+    if(!moved) return;
+
+    var merges=toRemove.length;
+    history=prev;
+    if(merges>0){ streak++; maxCombo=Math.max(maxCombo,merges); } else { streak=0; }
+    var multiplier= merges>=2 ? merges : 1;
+    var totalGained= gained*multiplier;
+    score+=totalGained;
+    if(score>best)best=score;
+    moves++;
+    if(mode==='time') startTimer();
+
+    if(totalGained>0){
+      scoreAddEl.textContent='+'+totalGained+(multiplier>1?' (×'+multiplier+')':'');
+      scoreAddEl.classList.remove('pop'); void scoreAddEl.offsetWidth; scoreAddEl.classList.add('pop');
+      sndMerge(merges);
+    }
+    tiles=tiles.filter(function(t){return toRemove.indexOf(t)===-1});
+    animating=true;
+    renderPositions();
+    tiles.forEach(function(t){
+      if(t.merged&&t.el){ t.el.classList.remove('merged'); void t.el.offsetWidth; t.el.classList.add('merged'); burstAt(t, merges); }
+    });
+    if(merges>=2) showCombo(merges, streak);
+
+    setTimeout(function(){
+      spawn(); render(); animating=false;
+      // Mission check (before generic win, except final mission falls through to win/allclear)
+      if(mode==='mission' && missionIndex<MISSIONS.length){
+        var m=MISSIONS[missionIndex];
+        if(m.test(statsObj()) && missionIndex<MISSIONS.length-1){
+          confetti(); sndWin();
+          showOverlay('mission','🎯','ミッションクリア！','「'+m.title+'」を達成しました！\n次のミッション：'+MISSIONS[missionIndex+1].title+'\n（盤面はそのまま続きます）','次のミッションへ','ニューゲーム');
+          updateHUD(); return;
+        }
+      }
+      var has2048=tiles.some(function(t){return t.value>=2048});
+      if(has2048&&!won){
+        won=true; confetti(); sndWin();
+        if(mode==='time') stopTimer();
+        if(mode==='mission'){
+          showOverlay('allclear','👑','全ミッション制覇＆キングくまモン誕生！','2048＝キングくまモンを作りました！ 全8ミッションクリアです。\nスコア '+score.toLocaleString('ja-JP')+' ・ '+moves+'手','もう一度遊ぶ','フリーで続ける');
+        } else {
+          showOverlay('win','👑','キングくまモン誕生！','お見事！ 2048＝キングくまモンを作りました。\nこのまま続けて4096の虹くまモンも目指せます。','そのまま続ける','ニューゲーム');
+        }
+        updateHUD(); return;
+      }
+      if(!canMove()){
+        gameOver=true; if(score>best)best=score; if(mode==='time')stopTimer();
+        showOverlay('gameover','😿','ゲームオーバー','もう動かせるマスがありませんでした。\nスコア '+score.toLocaleString('ja-JP')+' ・ 最大タイル '+maxTile()+' ・ 最大コンボ ×'+Math.max(maxCombo,1),'もう一度遊ぶ',null);
+      }
+      updateHUD();
+    },150);
+  }
+
+  /* ---------- Items ---------- */
+  function setTargeting(on){
+    targeting=on;
+    boardEl.classList.toggle('targeting', on);
+    targetBanner.classList.toggle('show', on);
+    updateHUD();
+  }
+  bombBtn.addEventListener('click', function(){ if(bombUses<=0||gameOver)return; sndClick(); setTargeting(!targeting); });
+  $('targetCancel').addEventListener('click', function(e){ e.stopPropagation(); setTargeting(false); });
+  layer.addEventListener('click', function(e){
+    if(!targeting) return;
+    var el=e.target.closest? e.target.closest('.tile') : null;
+    if(!el) return;
+    var id=Number(el.dataset.id);
+    var t=null; tiles.forEach(function(x){if(x.id===id)t=x});
+    if(!t) return;
+    history=snapshot();
+    burstAt(t,2);
+    tiles=tiles.filter(function(x){return x.id!==id});
+    bombUses--; setTargeting(false); sndMerge(2);
+    render();
+  });
+  shuffleBtn.addEventListener('click', function(){
+    if(shuffleUses<=0||gameOver||animating||tiles.length<2)return;
+    history=snapshot();
+    var positions=tiles.map(function(t){return {r:t.r,c:t.c}});
+    for(var i=positions.length-1;i>0;i--){ var j=Math.floor(Math.random()*(i+1)); var tmp=positions[i]; positions[i]=positions[j]; positions[j]=tmp; }
+    tiles.forEach(function(t,idx){ t.r=positions[idx].r; t.c=positions[idx].c; });
+    shuffleUses--; sndClick(); renderPositions(); render();
+  });
+
+  /* ---------- Overlay ---------- */
+  function showOverlay(kind, emoji, title, text, primaryLabel, secondaryLabel){
+    overlayMode=kind; overlayEmoji.textContent=emoji;
+    overlayTitle.textContent=title; overlayText.textContent=text;
+    overlayPrimary.textContent=primaryLabel;
+    if(secondaryLabel){ overlaySecondary.style.display=''; overlaySecondary.textContent=secondaryLabel; }
+    else overlaySecondary.style.display='none';
+    overlay.classList.add('show');
+  }
+  overlayPrimary.addEventListener('click', function(){
+    sndClick();
+    if(overlayMode==='mission'){ missionIndex++; overlay.classList.remove('show'); updateHUD(); }
+    else if(overlayMode==='win'||overlayMode==='allclear'&&false){ keepPlaying=true; overlay.classList.remove('show'); }
+    else if(overlayMode==='win'){ keepPlaying=true; overlay.classList.remove('show'); }
+    else if(overlayMode==='allclear'){ newGame(true); }
+    else { newGame(mode==='mission'); }
+  });
+  overlaySecondary.addEventListener('click', function(){
+    sndClick();
+    if(overlayMode==='win'||overlayMode==='allclear'){ keepPlaying=true; overlay.classList.remove('show'); if(overlayMode==='allclear'){ /* stay free */ } }
+    else newGame(mode==='mission');
+  });
+
+  /* ---------- Controls ---------- */
+  $('newGameBtn').addEventListener('click', function(){ sndClick(); newGame(mode==='mission'); });
+  undoBtn.addEventListener('click', function(){ if(history){ var h=history; history=null; restore(h); sndClick(); } });
+  $('skinBtn').addEventListener('click', function(){
+    skin= skin==='kuma' ? 'num' : 'kuma';
+    this.textContent= skin==='kuma' ? '🎨 スキン：熊本' : '🎨 スキン：数字';
+    sndClick(); render();
+  });
+  $('soundBtn').addEventListener('click', function(){
+    soundOn=!soundOn; this.textContent= soundOn?'🔊 音ON':'🔇 音OFF'; if(soundOn)sndClick();
+  });
+  function setMode(m){
+    mode=m;
+    $('tabNormal').classList.toggle('active', m==='normal');
+    $('tabTime').classList.toggle('active', m==='time');
+    $('tabMission').classList.toggle('active', m==='mission');
+    newGame(m==='mission');
+  }
+  $('tabNormal').addEventListener('click', function(){ sndClick(); setMode('normal'); });
+  $('tabTime').addEventListener('click', function(){ sndClick(); setMode('time'); });
+  $('tabMission').addEventListener('click', function(){ sndClick(); setMode('mission'); });
+
+  document.addEventListener('keydown', function(e){
+    var k=e.key, dir=null;
+    if(k==='ArrowLeft'||k==='a'||k==='A')dir='left';
+    else if(k==='ArrowRight'||k==='d'||k==='D')dir='right';
+    else if(k==='ArrowUp'||k==='w'||k==='W')dir='up';
+    else if(k==='ArrowDown'||k==='s'||k==='S')dir='down';
+    if(dir){ e.preventDefault(); move(dir); }
+  });
+  var touchX=null, touchY=null;
+  boardEl.addEventListener('touchstart', function(e){ var t=e.changedTouches[0]; touchX=t.clientX; touchY=t.clientY; }, {passive:true});
+  boardEl.addEventListener('touchmove', function(e){ e.preventDefault(); }, {passive:false});
+  boardEl.addEventListener('touchend', function(e){
+    if(touchX===null||targeting) { touchX=null; return; }
+    var t=e.changedTouches[0], dx=t.clientX-touchX, dy=t.clientY-touchY;
+    if(Math.max(Math.abs(dx),Math.abs(dy))<24){ touchX=null; return; }
+    move(Math.abs(dx)>Math.abs(dy) ? (dx>0?'right':'left') : (dy>0?'down':'up'));
+    touchX=null; touchY=null;
+  });
+  var mouseX=null, mouseY=null;
+  boardEl.addEventListener('mousedown', function(e){ mouseX=e.clientX; mouseY=e.clientY; });
+  document.addEventListener('mouseup', function(e){
+    if(mouseX===null||targeting) { mouseX=null; return; }
+    var dx=e.clientX-mouseX, dy=e.clientY-mouseY;
+    if(Math.max(Math.abs(dx),Math.abs(dy))>=32) move(Math.abs(dx)>Math.abs(dy) ? (dx>0?'right':'left') : (dy>0?'down':'up'));
+    mouseX=null; mouseY=null;
+  });
+  document.querySelectorAll('.dpad button[data-dir]').forEach(function(b){ b.addEventListener('click', function(){ move(b.getAttribute('data-dir')); }); });
+
+  newGame(false);
+})();
+</script>
+</body>
+</html>

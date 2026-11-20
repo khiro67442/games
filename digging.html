@@ -1,0 +1,1212 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="color-scheme" content="light dark" />
+    <link rel="icon" href="data:," />
+    <title>穴掘りゲーム</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@500;700;800&display=swap" rel="stylesheet" />
+    <style>
+      :root {
+        --bg: #efe3cb;
+        --bg-dot: #e3d3ae;
+        --panel: #fffaf0;
+        --panel-2: #f7ecd4;
+        --ink: #33241a;
+        --ink-soft: #6d5847;
+        --line: #c9ab7d;
+        --accent: #d2691e;
+        --accent-dark: #a34e12;
+        --accent-ink: #ffffff;
+        --green: #3f9142;
+        --gold: #c9930a;
+        --danger: #c0392b;
+        --chip: #ffffff;
+        --shadow: 0 3px 0 rgba(90, 58, 20, .25);
+      }
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --bg: #191008;
+          --bg-dot: #241708;
+          --panel: #2a1c10;
+          --panel-2: #33241634;
+          --panel-2: #332416;
+          --ink: #f3e6cf;
+          --ink-soft: #c4a87f;
+          --line: #5d4125;
+          --accent: #e07f2a;
+          --accent-dark: #b25f14;
+          --chip: #38260f;
+          --shadow: 0 3px 0 rgba(0, 0, 0, .45);
+        }
+      }
+      * { box-sizing: border-box; }
+      html, body { margin: 0; padding: 0; }
+      body {
+        font-family: "M PLUS Rounded 1c", "Hiragino Maru Gothic ProN", sans-serif;
+        background-color: var(--bg);
+        background-image: radial-gradient(var(--bg-dot) 1.2px, transparent 1.3px);
+        background-size: 22px 22px;
+        color: var(--ink);
+        -webkit-tap-highlight-color: transparent;
+      }
+      .wrap { max-width: 1180px; margin: 0 auto; padding: 14px 14px 30px; }
+
+      /* ---------- HUD ---------- */
+      .hud {
+        display: flex; flex-wrap: wrap; gap: 8px; align-items: stretch;
+        margin-bottom: 12px;
+      }
+      .chip {
+        background: var(--chip);
+        border: 2px solid var(--line);
+        border-radius: 12px;
+        box-shadow: var(--shadow);
+        padding: 7px 12px;
+        display: flex; flex-direction: column; justify-content: center;
+        min-width: 92px;
+      }
+      .chip .lab { font-size: 11px; font-weight: 700; color: var(--ink-soft); letter-spacing: .04em; }
+      .chip .val { font-size: 19px; font-weight: 800; line-height: 1.15; font-variant-numeric: tabular-nums; }
+      .chip .val small { font-size: 12px; font-weight: 700; color: var(--ink-soft); }
+      .chip.money .val { color: var(--gold); }
+      .chip.wide { flex: 1 1 170px; }
+      .bar {
+        height: 10px; border-radius: 6px; margin-top: 4px;
+        background: rgba(120, 84, 40, .25); overflow: hidden;
+      }
+      .bar > i { display: block; height: 100%; border-radius: 6px; background: var(--green); transition: width .15s linear; }
+      .bar.low > i { background: var(--danger); }
+      .hud .spacer { flex: 1; }
+      .tool-btn {
+        align-self: center;
+        font-family: inherit; font-weight: 800; font-size: 13px;
+        background: var(--panel); color: var(--ink);
+        border: 2px solid var(--line); border-radius: 10px;
+        padding: 9px 13px; cursor: pointer; box-shadow: var(--shadow);
+      }
+      .tool-btn:active { transform: translateY(2px); box-shadow: none; }
+
+      /* ---------- layout ---------- */
+      .layout { display: grid; grid-template-columns: minmax(0, 1fr) 348px; gap: 14px; align-items: start; }
+      @media (max-width: 900px) { .layout { grid-template-columns: 1fr; } }
+
+      .game-col { min-width: 0; }
+      .stage {
+        position: relative;
+        border: 3px solid #4a2f18;
+        border-radius: 16px;
+        overflow: hidden;
+        box-shadow: 0 6px 0 rgba(90, 58, 20, .3);
+        background: #79b5d9;
+      }
+      canvas#game { display: block; width: 100%; touch-action: none; }
+      .toast {
+        position: absolute; left: 50%; top: 12px; transform: translateX(-50%) translateY(-6px);
+        background: rgba(38, 22, 8, .92); color: #ffe9bd;
+        font-weight: 800; font-size: 14px; padding: 8px 16px; border-radius: 999px;
+        opacity: 0; pointer-events: none; transition: opacity .2s, transform .2s;
+        max-width: 92%; text-align: center; z-index: 5; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+      }
+      .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+      .toast.warn { background: rgba(150, 30, 16, .94); color: #ffe1da; }
+      .depth-chip {
+        position: absolute; left: 10px; bottom: 10px; z-index: 4;
+        background: rgba(38, 22, 8, .85); color: #ffe9bd;
+        font-weight: 800; font-size: 13px; padding: 6px 12px; border-radius: 999px;
+        pointer-events: none; font-variant-numeric: tabular-nums;
+      }
+      .win-overlay {
+        position: absolute; inset: 0; z-index: 8;
+        background: rgba(20, 10, 2, .66);
+        display: none; align-items: center; justify-content: center; padding: 18px;
+      }
+      .win-overlay.show { display: flex; }
+      .win-card {
+        background: var(--panel); border: 3px solid var(--gold); border-radius: 18px;
+        padding: 22px 24px; text-align: center; max-width: 420px; width: 100%;
+        box-shadow: 0 10px 30px rgba(0,0,0,.4);
+      }
+      .win-card h2 { margin: 0 0 6px; font-size: 24px; font-weight: 800; }
+      .win-card p { margin: 6px 0 14px; color: var(--ink-soft); font-weight: 700; font-size: 14px; line-height: 1.6; }
+      .win-card .big { font-size: 30px; font-weight: 800; color: var(--gold); }
+
+      /* ---------- controls ---------- */
+      .controls {
+        display: flex; align-items: center; justify-content: center; gap: 10px;
+        margin-top: 12px; flex-wrap: wrap;
+      }
+      .dpad { display: flex; gap: 8px; }
+      .dbtn {
+        width: 58px; height: 58px; border-radius: 14px;
+        font-size: 22px; font-weight: 800; font-family: inherit;
+        background: var(--panel); color: var(--ink);
+        border: 2px solid var(--line); box-shadow: var(--shadow);
+        cursor: pointer; touch-action: none; user-select: none; -webkit-user-select: none;
+      }
+      .dbtn:active, .dbtn.held { background: var(--accent); color: #fff; transform: translateY(2px); box-shadow: none; }
+      .abtn {
+        height: 58px; padding: 0 18px; border-radius: 14px;
+        font-size: 14px; font-weight: 800; font-family: inherit;
+        background: #7a4a21; color: #ffe9bd;
+        border: 2px solid #5d3714; box-shadow: var(--shadow);
+        cursor: pointer; touch-action: none; user-select: none; -webkit-user-select: none;
+      }
+      .abtn:active { transform: translateY(2px); box-shadow: none; }
+      .abtn:disabled { opacity: .45; cursor: default; }
+      .keys-hint { text-align: center; color: var(--ink-soft); font-size: 12px; font-weight: 700; margin-top: 8px; }
+
+      /* ---------- side panels ---------- */
+      .panel {
+        background: var(--panel); border: 2px solid var(--line); border-radius: 16px;
+        box-shadow: var(--shadow); padding: 14px 16px; margin-bottom: 14px;
+      }
+      .panel h2 {
+        margin: 0 0 4px; font-size: 17px; font-weight: 800;
+        display: flex; align-items: center; gap: 8px;
+      }
+      .panel h2 .tag {
+        font-size: 11px; font-weight: 800; padding: 2px 9px; border-radius: 999px;
+        background: var(--green); color: #fff;
+      }
+      .panel h2 .tag.off { background: #9a8b78; }
+      .panel .note { font-size: 12px; color: var(--ink-soft); font-weight: 700; margin: 0 0 10px; line-height: 1.55; }
+      .shop-item {
+        display: flex; align-items: center; gap: 10px;
+        padding: 9px 0; border-top: 1px dashed var(--line);
+      }
+      .shop-item:first-of-type { border-top: none; }
+      .shop-item .ic {
+        width: 38px; height: 38px; flex: none; border-radius: 10px;
+        display: flex; align-items: center; justify-content: center;
+        background: var(--panel-2); border: 2px solid var(--line);
+      }
+      .shop-item .ic svg { width: 22px; height: 22px; }
+      .shop-item .info { flex: 1; min-width: 0; }
+      .shop-item .nm { font-weight: 800; font-size: 14px; }
+      .shop-item .nm .lv { color: var(--accent); font-size: 12px; margin-left: 4px; }
+      .shop-item .ds { font-size: 11.5px; color: var(--ink-soft); font-weight: 700; line-height: 1.45; }
+      .buy-btn {
+        flex: none; font-family: inherit; font-weight: 800; font-size: 13px;
+        background: var(--accent); color: var(--accent-ink);
+        border: none; border-bottom: 3px solid var(--accent-dark);
+        border-radius: 10px; padding: 9px 12px; cursor: pointer; min-width: 86px;
+        font-variant-numeric: tabular-nums;
+      }
+      .buy-btn:active { transform: translateY(2px); border-bottom-width: 1px; }
+      .buy-btn:disabled { background: #b8a88f; border-bottom-color: #97876c; cursor: default; transform: none; }
+      .inv-list { list-style: none; margin: 6px 0 0; padding: 0; }
+      .inv-list li {
+        display: flex; align-items: center; gap: 8px;
+        padding: 5px 0; font-size: 13.5px; font-weight: 700;
+        border-top: 1px dashed var(--line);
+      }
+      .inv-list li:first-child { border-top: none; }
+      .inv-list .dot { width: 13px; height: 13px; border-radius: 4px; flex: none; border: 1.5px solid rgba(0,0,0,.25); }
+      .inv-list .cnt { margin-left: auto; font-variant-numeric: tabular-nums; }
+      .inv-list .yen { color: var(--gold); font-weight: 800; font-variant-numeric: tabular-nums; }
+      .inv-empty { font-size: 13px; color: var(--ink-soft); font-weight: 700; padding: 6px 0 2px; }
+      .inv-total { margin-top: 8px; font-size: 13px; font-weight: 800; text-align: right; }
+      .mile-list { list-style: none; margin: 6px 0 0; padding: 0; }
+      .mile-list li {
+        display: flex; align-items: center; gap: 9px;
+        padding: 6px 0; font-size: 13.5px; font-weight: 700; color: var(--ink-soft);
+        border-top: 1px dashed var(--line);
+      }
+      .mile-list li:first-child { border-top: none; }
+      .mile-list .mk {
+        width: 20px; height: 20px; flex: none; border-radius: 50%;
+        border: 2px solid var(--line); display: flex; align-items: center; justify-content: center;
+        font-size: 12px; color: transparent; background: var(--panel-2);
+      }
+      .mile-list li.done { color: var(--ink); }
+      .mile-list li.done .mk { background: var(--green); border-color: var(--green); color: #fff; }
+      .howto { font-size: 13px; font-weight: 700; line-height: 1.75; color: var(--ink-soft); margin: 4px 0 0; padding-left: 18px; }
+      .howto b { color: var(--ink); }
+      .stats-row { display: flex; gap: 14px; flex-wrap: wrap; font-size: 12.5px; font-weight: 700; color: var(--ink-soft); }
+      .stats-row b { color: var(--ink); font-variant-numeric: tabular-nums; }
+      .btn-main {
+        font-family: inherit; font-weight: 800; font-size: 15px;
+        background: var(--accent); color: #fff; border: none; border-bottom: 4px solid var(--accent-dark);
+        border-radius: 12px; padding: 11px 22px; cursor: pointer;
+      }
+      .btn-sub {
+        font-family: inherit; font-weight: 800; font-size: 14px;
+        background: var(--panel); color: var(--ink); border: 2px solid var(--line);
+        border-radius: 12px; padding: 10px 18px; cursor: pointer; margin-left: 8px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+
+      <!-- HUD -->
+      <div class="hud">
+        <div class="chip money"><span class="lab">所持金</span><span class="val">¥<span id="hudMoney">0</span></span></div>
+        <div class="chip"><span class="lab">深さ</span><span class="val"><span id="hudDepth">0</span><small> m</small></span></div>
+        <div class="chip"><span class="lab">最深記録</span><span class="val"><span id="hudMaxDepth">0</span><small> m</small></span></div>
+        <div class="chip wide">
+          <span class="lab">バッテリー <span id="hudEnergyTxt"></span></span>
+          <div class="bar" id="energyBar"><i style="width:100%"></i></div>
+        </div>
+        <div class="chip">
+          <span class="lab">リュック</span>
+          <span class="val"><span id="hudPack">0</span><small> / <span id="hudPackMax">10</span></small></span>
+        </div>
+        <div class="spacer"></div>
+        <button class="tool-btn" id="soundBtn" type="button">サウンド ON</button>
+        <button class="tool-btn" id="restartBtn" type="button">最初から</button>
+      </div>
+
+      <div class="layout">
+        <!-- game column -->
+        <div class="game-col">
+          <div class="stage" id="stage">
+            <canvas id="game"></canvas>
+            <div class="toast" id="toast"></div>
+            <div class="depth-chip" id="depthChip">秘宝まで あと 119m</div>
+            <div class="win-overlay" id="winOverlay">
+              <div class="win-card">
+                <h2>古代の秘宝を発見！</h2>
+                <div class="big">¥5,000</div>
+                <p id="winStats">最深部に眠っていた秘宝を掘り当てた！<br />この穴はクリア。掘り続けることも、新しい穴に挑むこともできるよ。</p>
+                <button class="btn-main" id="winContinue" type="button">掘り続ける</button>
+                <button class="btn-sub" id="winNewHole" type="button">新しい穴を掘る</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="controls">
+            <div class="dpad">
+              <button class="dbtn" data-dir="left" type="button" aria-label="左">◀</button>
+              <button class="dbtn" data-dir="up" type="button" aria-label="上">▲</button>
+              <button class="dbtn" data-dir="down" type="button" aria-label="下">▼</button>
+              <button class="dbtn" data-dir="right" type="button" aria-label="右">▶</button>
+            </div>
+            <button class="abtn" id="bombBtn" type="button">ダイナマイト ×<span id="bombCnt">0</span></button>
+          </div>
+          <p class="keys-hint">キーボード： ←↑↓→ / WASD で移動＆掘る ・ Bキーでダイナマイト ・ 地面のマスをタップしても掘れるよ</p>
+        </div>
+
+        <!-- side column -->
+        <div class="side-col">
+          <section class="panel" id="shopPanel">
+            <h2>地上ショップ <span class="tag" id="shopTag">営業中</span></h2>
+            <p class="note">地上に戻ると、集めた鉱石は自動で売却＆バッテリー全回復。稼いだお金で装備を強化して、もっと深くへ。</p>
+            <div id="shopList"></div>
+          </section>
+
+          <section class="panel">
+            <h2>リュックの中身</h2>
+            <div id="invBody"></div>
+          </section>
+
+          <section class="panel">
+            <h2>到達記録</h2>
+            <ul class="mile-list" id="mileList"></ul>
+            <div class="stats-row" style="margin-top:10px;">
+              <span>掘った数 <b id="statDug">0</b></span>
+              <span>累計売上 <b id="statEarned">¥0</b></span>
+              <span>タイム <b id="statTime">0:00</b></span>
+            </div>
+          </section>
+
+          <section class="panel">
+            <h2>遊び方</h2>
+            <ul class="howto">
+              <li><b>掘る</b>：方向キーやボタンで進む方向の土や岩を掘る。硬い岩ほど何回も叩く。</li>
+              <li><b>稼ぐ</b>：鉱石を拾って地上に戻れば自動売却。深いほどレアで高く売れる。</li>
+              <li><b>バッテリー注意</b>：掘るたび＆地中にいる間も少しずつ減る。0になると救出されて売値が半分に…。</li>
+              <li><b>目標</b>：最深部 <b>120m</b> に眠る「古代の秘宝」。強化を重ねてたどり着こう。</li>
+            </ul>
+          </section>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      "use strict";
+      /* ================= 基本データ ================= */
+      var COLS = 11, ROWS = 120, CENTER = 5;
+      var KIND = {
+        dirt:    { name: "土",     value: 0,    gem: null },
+        stone:   { name: "岩",     value: 0,    gem: null },
+        coal:    { name: "石炭",   value: 5,    gem: "#2b2b30" },
+        copper:  { name: "銅",     value: 12,   gem: "#e08a3c" },
+        iron:    { name: "鉄",     value: 22,   gem: "#cfd4d9" },
+        silver:  { name: "銀",     value: 38,   gem: "#eef1f4" },
+        gold:    { name: "金",     value: 65,   gem: "#ffd94d" },
+        ruby:    { name: "ルビー", value: 120,  gem: "#e8324f" },
+        emerald: { name: "エメラルド", value: 200, gem: "#2ecc71" },
+        diamond: { name: "ダイヤモンド", value: 340, gem: "#7fe7f2" },
+        chest:   { name: "宝箱",   value: 0,    gem: "#b5762a" },
+        ancient: { name: "古代の秘宝", value: 5000, gem: "#ffcf3f" }
+      };
+      var ORE_ORDER = ["coal","copper","iron","silver","gold","ruby","emerald","diamond"];
+
+      function mulberry32(a) {
+        return function () {
+          a |= 0; a = (a + 0x6D2B79F5) | 0;
+          var t = Math.imul(a ^ (a >>> 15), 1 | a);
+          t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+          return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+        };
+      }
+
+      /* ================= 状態 ================= */
+      var S;
+      function freshState(seed) {
+        return {
+          seed: seed,
+          money: 0,
+          energy: 100,
+          player: { x: CENTER, y: 0, face: 1 },
+          inv: {},           // kind -> count
+          invCount: 0,
+          lv: { shovel: 1, battery: 1, pack: 1, lamp: 1, boots: 1 },
+          bombs: 1,
+          maxDepth: 0,
+          dug: 0,
+          earned: 0,
+          hole: 1,
+          hardMul: 1,
+          cleared: false,
+          startAt: Date.now(),
+          milesHit: {}
+        };
+      }
+
+      /* 派生ステータス */
+      function digPower()  { return 1 + (S.lv.shovel - 1) * 0.85; }
+      function digDelay()  { return Math.max(80, 290 - (S.lv.shovel - 1) * 16 - (S.lv.boots - 1) * 15); }
+      function moveDelay() { return Math.max(65, 150 - (S.lv.boots - 1) * 11); }
+      function maxEnergy() { return 100 + (S.lv.battery - 1) * 45; }
+      function capacity()  { return 10 + (S.lv.pack - 1) * 8; }
+      function lampRadius(){ return 2.3 + (S.lv.lamp - 1) * 0.6; }
+
+      /* ================= 地形生成 ================= */
+      var grid = []; // grid[y][x], y=1..ROWS。null = 掘り済み
+      function tileHP(kind, y) {
+        var base;
+        if (kind === "dirt") base = 2 + Math.floor(y / 28);
+        else if (kind === "stone") base = 4 + Math.floor(y / 11);
+        else if (kind === "chest") base = 5 + Math.floor(y / 10);
+        else if (kind === "ancient") base = 30;
+        else base = 3 + Math.floor(y / 13); // 鉱石
+        return Math.round(base * S.hardMul);
+      }
+      function genWorld() {
+        var rng = mulberry32(S.seed * 7919 + S.hole * 131);
+        grid = [];
+        for (var y = 0; y <= ROWS; y++) grid.push(new Array(COLS).fill(null));
+        for (var yy = 1; yy <= ROWS; yy++) {
+          for (var xx = 0; xx < COLS; xx++) {
+            var kind;
+            if (yy === ROWS && xx === CENTER) {
+              kind = "ancient";
+            } else {
+              var r = rng();
+              var pStone = Math.min(0.14 + yy * 0.004, 0.55);
+              kind = null;
+              if (r < 0.006) kind = "chest";
+              else if (yy >= 95 && r < 0.030) kind = "diamond";
+              else if (yy >= 78 && r < 0.052) kind = "emerald";
+              else if (yy >= 60 && r < 0.074) kind = "ruby";
+              else if (yy >= 45 && r < 0.096) kind = "gold";
+              else if (yy >= 30 && r < 0.116) kind = "silver";
+              else if (yy >= 18 && r < 0.136) kind = "iron";
+              else if (yy >= 10 && r < 0.154) kind = "copper";
+              else if (yy >= 3  && r < 0.168) kind = "coal";
+              if (!kind) kind = rng() < pStone ? "stone" : "dirt";
+            }
+            var hp = tileHP(kind, yy);
+            grid[yy][xx] = { kind: kind, hp: hp, max: hp, shade: rng() * 0.14 - 0.07 };
+          }
+        }
+      }
+
+      /* ================= サウンド ================= */
+      var audioCtx = null, soundOn = true;
+      function ac() {
+        if (!audioCtx) { try { audioCtx = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) { return null; } }
+        if (audioCtx && audioCtx.state === "suspended") audioCtx.resume();
+        return audioCtx;
+      }
+      function tone(freq, dur, type, vol, when) {
+        if (!soundOn) return;
+        var c = ac(); if (!c) return;
+        var t = c.currentTime + (when || 0);
+        var o = c.createOscillator(), g = c.createGain();
+        o.type = type || "square"; o.frequency.setValueAtTime(freq, t);
+        g.gain.setValueAtTime(vol || 0.05, t);
+        g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+        o.connect(g); g.connect(c.destination);
+        o.start(t); o.stop(t + dur + 0.02);
+      }
+      function sndDig()    { tone(110 + Math.random() * 40, 0.07, "square", 0.045); }
+      function sndBreak()  { tone(220, 0.09, "square", 0.05); tone(330, 0.1, "square", 0.04, 0.05); }
+      function sndPickup() { tone(660, 0.07, "sine", 0.06); tone(990, 0.09, "sine", 0.06, 0.06); }
+      function sndSell()   { [523, 659, 784, 1046].forEach(function (f, i) { tone(f, 0.12, "sine", 0.06, i * 0.07); }); }
+      function sndBuy()    { [440, 587, 880].forEach(function (f, i) { tone(f, 0.1, "sine", 0.06, i * 0.06); }); }
+      function sndWarn()   { tone(880, 0.09, "square", 0.04); tone(880, 0.09, "square", 0.04, 0.13); }
+      function sndBoom()   { tone(70, 0.35, "sawtooth", 0.12); tone(50, 0.4, "square", 0.08, 0.03); }
+      function sndWin()    { [523, 659, 784, 1046, 784, 1046, 1318].forEach(function (f, i) { tone(f, 0.16, "sine", 0.07, i * 0.1); }); }
+
+      /* ================= トースト ================= */
+      var toastEl = document.getElementById("toast"), toastTimer = null;
+      function toast(msg, warn) {
+        toastEl.textContent = msg;
+        toastEl.className = "toast show" + (warn ? " warn" : "");
+        clearTimeout(toastTimer);
+        toastTimer = setTimeout(function () { toastEl.className = "toast"; }, 2300);
+      }
+
+      /* ================= パーティクル ================= */
+      var particles = [], floats = [], confetti = [];
+      function spawnDirt(wx, wy, base) {
+        for (var i = 0; i < 7; i++) {
+          particles.push({
+            x: wx + 0.5, y: wy + 0.5,
+            vx: (Math.random() - 0.5) * 3.2, vy: -Math.random() * 2.6 - 0.6,
+            life: 0.45 + Math.random() * 0.3, t: 0,
+            col: base, sz: 0.05 + Math.random() * 0.08
+          });
+        }
+      }
+      function spawnSparkle(wx, wy, col) {
+        for (var i = 0; i < 10; i++) {
+          particles.push({
+            x: wx + 0.5, y: wy + 0.5,
+            vx: (Math.random() - 0.5) * 4, vy: (Math.random() - 0.5) * 4,
+            life: 0.5 + Math.random() * 0.3, t: 0, col: col, sz: 0.04 + Math.random() * 0.06, spark: true
+          });
+        }
+      }
+      function spawnConfetti() {
+        var cols = ["#e8324f", "#ffd94d", "#2ecc71", "#3498db", "#e07f2a", "#ff7bac"];
+        for (var i = 0; i < 130; i++) {
+          confetti.push({
+            x: Math.random() * COLS, y: S.player.y - 6 - Math.random() * 4,
+            vx: (Math.random() - 0.5) * 1.6, vy: 1.2 + Math.random() * 2.2,
+            rot: Math.random() * Math.PI, vr: (Math.random() - 0.5) * 6,
+            col: cols[i % cols.length], t: 0, life: 3.2
+          });
+        }
+      }
+      function addFloat(wx, wy, text, col) {
+        floats.push({ x: wx + 0.5, y: wy, text: text, col: col || "#ffe9bd", t: 0, life: 1.15 });
+      }
+
+      /* ================= ゲームロジック ================= */
+      function tileAt(x, y) {
+        if (x < 0 || x >= COLS || y < 1 || y > ROWS) return undefined; // 範囲外
+        return grid[y][x]; // null = 空洞
+      }
+      function collectKind(kind, wx, wy) {
+        if (kind === "dirt" || kind === "stone") return;
+        if (kind === "chest") {
+          var bonus = 120 + Math.floor(Math.random() * 25) * 10 + wy * 2;
+          S.money += bonus; S.earned += bonus;
+          addFloat(wx, wy - 0.4, "宝箱 +¥" + bonus, "#ffd94d");
+          spawnSparkle(wx, wy, "#ffd94d"); sndPickup();
+          toast("宝箱を開けた！ +¥" + bonus);
+          return;
+        }
+        if (kind === "ancient") {
+          S.money += KIND.ancient.value; S.earned += KIND.ancient.value;
+          spawnSparkle(wx, wy, "#ffcf3f");
+          onWin();
+          return;
+        }
+        if (S.invCount >= capacity()) {
+          addFloat(wx, wy - 0.4, "リュック満杯！", "#ff9a8a");
+          toast("リュックが満杯！地上に戻って売ろう", true);
+          return;
+        }
+        S.inv[kind] = (S.inv[kind] || 0) + 1;
+        S.invCount++;
+        addFloat(wx, wy - 0.4, KIND[kind].name + " ゲット", "#ffffff");
+        spawnSparkle(wx, wy, KIND[kind].gem);
+        sndPickup();
+      }
+      function destroyTile(x, y, silent) {
+        var t = grid[y][x]; if (!t) return;
+        grid[y][x] = null;
+        S.dug++;
+        spawnDirt(x, y, t.kind === "stone" ? "#8d8578" : "#9a6a3d");
+        if (!silent) sndBreak();
+        collectKind(t.kind, x, y);
+      }
+      function spendEnergy(n) {
+        S.energy -= n;
+        if (S.energy <= 0) {
+          S.energy = 0;
+          if (S.player.y >= 1) rescue();
+        }
+      }
+      function arriveSurface() {
+        var total = 0, lines = [];
+        ORE_ORDER.forEach(function (k) {
+          var c = S.inv[k] || 0;
+          if (c > 0) { total += c * KIND[k].value; lines.push(KIND[k].name + "×" + c); }
+        });
+        if (total > 0) {
+          S.money += total; S.earned += total;
+          toast("売却完了！ +" + "¥" + total + "（" + lines.join("・") + "）");
+          sndSell();
+          addFloat(S.player.x, 0, "+¥" + total, "#ffd94d");
+        } else {
+          toast("地上に到着。バッテリー回復！");
+        }
+        S.inv = {}; S.invCount = 0;
+        S.energy = maxEnergy();
+        refreshShop(); refreshInv();
+      }
+      function rescue() {
+        var total = 0;
+        ORE_ORDER.forEach(function (k) { total += (S.inv[k] || 0) * KIND[k].value; });
+        var half = Math.floor(total / 2);
+        if (half > 0) { S.money += half; S.earned += half; }
+        S.inv = {}; S.invCount = 0;
+        S.player.x = CENTER; S.player.y = 0;
+        S.energy = maxEnergy();
+        camY = -1.3;
+        toast("バッテリー切れで救出された… 売値の半分 ¥" + half + " が手元に", true);
+        sndWarn();
+        refreshShop(); refreshInv();
+      }
+      function useBomb() {
+        if (S.bombs <= 0) { toast("ダイナマイトがない！地上ショップで買おう", true); return; }
+        if (S.player.y < 1) { toast("地上では使えないよ", true); return; }
+        S.bombs--;
+        sndBoom(); shake = 14;
+        var px = S.player.x, py = S.player.y;
+        for (var dy = -1; dy <= 1; dy++) {
+          for (var dx = -1; dx <= 1; dx++) {
+            var x = px + dx, y = py + dy;
+            if (x < 0 || x >= COLS || y < 1 || y > ROWS) continue;
+            if (grid[y][x]) destroyTile(x, y, true);
+          }
+        }
+        spendEnergy(4);
+        refreshInv(); refreshShop();
+      }
+      function onWin() {
+        S.cleared = true;
+        sndWin(); spawnConfetti();
+        document.getElementById("winStats").innerHTML =
+          "深さ " + ROWS + "m の最深部で秘宝を掘り当てた！<br />" +
+          "累計売上 ¥" + S.earned.toLocaleString() + " ・ 掘った数 " + S.dug + " 個 ・ 穴 " + S.hole + " つ目クリア。";
+        setTimeout(function () { document.getElementById("winOverlay").classList.add("show"); }, 650);
+        refreshMiles();
+      }
+
+      /* 1ステップ（移動 or 掘り） */
+      var DIRS = { left: [-1, 0], right: [1, 0], up: [0, -1], down: [0, 1] };
+      function step(dirName) {
+        var d = DIRS[dirName]; if (!d) return;
+        var nx = S.player.x + d[0], ny = S.player.y + d[1];
+        if (d[0] !== 0) S.player.face = d[0];
+        if (nx < 0 || nx >= COLS || ny < 0 || ny > ROWS) return;
+        if (ny === 0) { // 地上へ
+          var wasUnder = S.player.y >= 1;
+          S.player.x = nx; S.player.y = 0;
+          if (wasUnder) arriveSurface();
+          return;
+        }
+        var t = tileAt(nx, ny);
+        if (t === undefined) return;
+        if (t === null) { // 空洞へ移動
+          S.player.x = nx; S.player.y = ny;
+          spendEnergy(0.22);
+        } else { // 掘る
+          t.hp -= digPower();
+          spendEnergy(1.05);
+          sndDig();
+          spawnDirt(nx, ny, t.kind === "stone" ? "#8d8578" : "#9a6a3d");
+          shake = Math.max(shake, 2.5);
+          if (t.hp <= 0) {
+            destroyTile(nx, ny);
+            S.player.x = nx; S.player.y = ny;
+            refreshInv();
+          }
+        }
+        if (S.player.y > S.maxDepth) {
+          S.maxDepth = S.player.y;
+          checkMiles();
+        }
+      }
+
+      var MILES = [
+        { d: 10,  label: "深さ 10m 到達" },
+        { d: 30,  label: "深さ 30m 到達（銀が出始める）" },
+        { d: 50,  label: "深さ 50m 到達" },
+        { d: 75,  label: "深さ 75m 到達" },
+        { d: 100, label: "深さ 100m 到達（ダイヤ地帯）" },
+        { d: 120, label: "古代の秘宝を発見", win: true }
+      ];
+      function checkMiles() {
+        MILES.forEach(function (m) {
+          if (!m.win && S.maxDepth >= m.d && !S.milesHit[m.d]) {
+            S.milesHit[m.d] = true;
+            toast("到達記録：深さ " + m.d + "m！");
+            tone(784, 0.12, "sine", 0.06); tone(1174, 0.14, "sine", 0.06, 0.09);
+          }
+        });
+        refreshMiles();
+      }
+
+      /* ================= 入力 ================= */
+      var heldDir = null, lastDirChange = 0;
+      function setDir(d) {
+        if (heldDir !== d) {
+          heldDir = d; lastDirChange = performance.now(); actTimer = 0;
+          step(d); // タップした瞬間に1回反応させる
+        }
+      }
+      var KEYMAP = {
+        ArrowLeft: "left", ArrowRight: "right", ArrowUp: "up", ArrowDown: "down",
+        a: "left", d: "right", w: "up", s: "down",
+        A: "left", D: "right", W: "up", S: "down"
+      };
+      var keysDown = {};
+      window.addEventListener("keydown", function (e) {
+        if (e.key === "b" || e.key === "B") { useBomb(); refreshShop(); return; }
+        var d = KEYMAP[e.key];
+        if (d) {
+          e.preventDefault();
+          keysDown[d] = true; setDir(d); ac();
+        }
+      });
+      window.addEventListener("keyup", function (e) {
+        var d = KEYMAP[e.key];
+        if (d) {
+          keysDown[d] = false;
+          if (heldDir === d) {
+            var next = null;
+            ["left", "right", "up", "down"].forEach(function (k) { if (keysDown[k]) next = k; });
+            heldDir = next;
+          }
+        }
+      });
+      document.querySelectorAll(".dbtn").forEach(function (btn) {
+        var d = btn.getAttribute("data-dir");
+        function on(e) { e.preventDefault(); ac(); btn.classList.add("held"); setDir(d); }
+        function off(e) { if (e) e.preventDefault(); btn.classList.remove("held"); if (heldDir === d) heldDir = null; }
+        btn.addEventListener("pointerdown", on);
+        btn.addEventListener("pointerup", off);
+        btn.addEventListener("pointerleave", off);
+        btn.addEventListener("pointercancel", off);
+      });
+      document.getElementById("bombBtn").addEventListener("click", function () { useBomb(); refreshShop(); });
+
+      /* キャンバスのタップで隣マスを掘る */
+      var canvas = document.getElementById("game");
+      var ctx = canvas.getContext("2d");
+      var viewW = 0, viewH = 0, tilePx = 32, camY = -1.3, shake = 0;
+      function canvasDirFromPoint(clientX, clientY) {
+        var r = canvas.getBoundingClientRect();
+        var wx = (clientX - r.left) / tilePx;
+        var wy = (clientY - r.top) / tilePx + camY;
+        var dx = Math.floor(wx) - S.player.x, dy = Math.floor(wy) - S.player.y;
+        if (Math.abs(dx) + Math.abs(dy) !== 1) return null;
+        return dx === 1 ? "right" : dx === -1 ? "left" : dy === 1 ? "down" : "up";
+      }
+      canvas.addEventListener("pointerdown", function (e) {
+        e.preventDefault(); ac();
+        var d = canvasDirFromPoint(e.clientX, e.clientY);
+        if (d) setDir(d);
+      });
+      window.addEventListener("pointerup", function () {
+        if (heldDir && !keysDown[heldDir]) heldDir = null;
+      });
+
+      /* ================= 描画 ================= */
+      function depthBaseColor(y, shade) {
+        // 深さで土の色をだんだん暗く
+        var stops = [
+          [0,   [168, 116, 63]],
+          [30,  [146, 96, 52]],
+          [60,  [116, 76, 46]],
+          [90,  [88, 62, 44]],
+          [120, [62, 46, 38]]
+        ];
+        var a = stops[0], b = stops[stops.length - 1];
+        for (var i = 0; i < stops.length - 1; i++) {
+          if (y >= stops[i][0] && y <= stops[i + 1][0]) { a = stops[i]; b = stops[i + 1]; break; }
+        }
+        var f = (y - a[0]) / Math.max(1, b[0] - a[0]);
+        var c = a[1].map(function (v, j) { return Math.round(v + (b[1][j] - v) * f); });
+        var m = 1 + shade;
+        return "rgb(" + Math.min(255, Math.round(c[0] * m)) + "," + Math.min(255, Math.round(c[1] * m)) + "," + Math.min(255, Math.round(c[2] * m)) + ")";
+      }
+      function drawGem(cx, cy, r, kind) {
+        ctx.save();
+        ctx.translate(cx, cy);
+        if (kind === "coal") {
+          ctx.fillStyle = "#26262b";
+          [[-0.3, -0.1, 0.32], [0.28, 0.14, 0.26], [0, 0.3, 0.22]].forEach(function (p) {
+            ctx.beginPath(); ctx.arc(p[0] * r * 2, p[1] * r * 2, p[2] * r * 2, 0, 7); ctx.fill();
+          });
+          ctx.fillStyle = "rgba(255,255,255,.35)";
+          ctx.beginPath(); ctx.arc(-0.22 * r, -0.2 * r, r * 0.12, 0, 7); ctx.fill();
+        } else if (kind === "ruby" || kind === "emerald" || kind === "diamond") {
+          ctx.fillStyle = KIND[kind].gem;
+          ctx.beginPath();
+          ctx.moveTo(0, -r); ctx.lineTo(r * 0.8, -r * 0.25); ctx.lineTo(r * 0.45, r * 0.9);
+          ctx.lineTo(-r * 0.45, r * 0.9); ctx.lineTo(-r * 0.8, -r * 0.25); ctx.closePath(); ctx.fill();
+          ctx.fillStyle = "rgba(255,255,255,.55)";
+          ctx.beginPath(); ctx.moveTo(0, -r); ctx.lineTo(r * 0.4, -r * 0.2); ctx.lineTo(-r * 0.4, -r * 0.2); ctx.closePath(); ctx.fill();
+        } else if (kind === "chest" || kind === "ancient") {
+          var w = r * 1.7, h = r * 1.25;
+          ctx.fillStyle = kind === "ancient" ? "#8a5a12" : "#7c4b1d";
+          ctx.fillRect(-w / 2, -h / 2, w, h);
+          ctx.fillStyle = kind === "ancient" ? "#ffcf3f" : "#c9930a";
+          ctx.fillRect(-w / 2, -h / 2, w, h * 0.3);
+          ctx.fillRect(-r * 0.14, -h / 2, r * 0.28, h);
+          ctx.fillStyle = "#ffe98a";
+          ctx.fillRect(-r * 0.16, -r * 0.16, r * 0.32, r * 0.32);
+          if (kind === "ancient") {
+            ctx.strokeStyle = "rgba(255,220,90,.9)"; ctx.lineWidth = 2;
+            ctx.beginPath(); ctx.arc(0, 0, r * 1.35, 0, 7); ctx.stroke();
+          }
+        } else { // 金属系の鉱石：丸い塊
+          ctx.fillStyle = KIND[kind].gem;
+          [[-0.32, -0.14, 0.3], [0.3, 0.05, 0.36], [-0.05, 0.34, 0.26]].forEach(function (p) {
+            ctx.beginPath(); ctx.arc(p[0] * r * 2, p[1] * r * 2, p[2] * r * 2, 0, 7); ctx.fill();
+          });
+          ctx.fillStyle = "rgba(255,255,255,.5)";
+          ctx.beginPath(); ctx.arc(-0.2 * r, -0.28 * r, r * 0.13, 0, 7); ctx.fill();
+        }
+        ctx.restore();
+      }
+      function drawTile(x, y, px, py, T) {
+        var t = grid[y][x];
+        if (!t) { // 空洞
+          ctx.fillStyle = "#20130a";
+          ctx.fillRect(px, py, T + 1, T + 1);
+          ctx.fillStyle = "rgba(0,0,0,.35)";
+          ctx.fillRect(px, py, T + 1, 4);
+          return;
+        }
+        if (t.kind === "stone") {
+          var g = 118 - Math.min(52, y * 0.45) + t.shade * 160;
+          ctx.fillStyle = "rgb(" + Math.round(g) + "," + Math.round(g * 0.96) + "," + Math.round(g * 0.88) + ")";
+        } else {
+          ctx.fillStyle = depthBaseColor(y, t.shade);
+        }
+        ctx.fillRect(px, py, T + 1, T + 1);
+        // 質感の点々
+        ctx.fillStyle = "rgba(0,0,0,.13)";
+        var h1 = ((x * 31 + y * 57) % 13) / 13, h2 = ((x * 47 + y * 19) % 11) / 11;
+        ctx.fillRect(px + h1 * T * 0.8, py + h2 * T * 0.8, 3, 3);
+        ctx.fillRect(px + (1 - h2) * T * 0.7, py + (1 - h1) * T * 0.7, 2, 2);
+        if (t.kind === "stone") {
+          ctx.strokeStyle = "rgba(0,0,0,.22)"; ctx.lineWidth = 1.4;
+          ctx.beginPath();
+          ctx.moveTo(px + T * 0.15, py + T * 0.6); ctx.lineTo(px + T * 0.45, py + T * 0.4); ctx.lineTo(px + T * 0.8, py + T * 0.55);
+          ctx.stroke();
+        }
+        if (t.kind !== "dirt" && t.kind !== "stone") {
+          drawGem(px + T / 2, py + T / 2, T * 0.21, t.kind);
+        }
+        // ダメージのヒビ
+        if (t.hp < t.max) {
+          var dmg = 1 - t.hp / t.max;
+          ctx.strokeStyle = "rgba(20,8,2,.65)"; ctx.lineWidth = 1.6;
+          ctx.beginPath();
+          ctx.moveTo(px + T * 0.2, py + T * 0.15);
+          ctx.lineTo(px + T * (0.2 + dmg * 0.35), py + T * 0.45);
+          if (dmg > 0.35) { ctx.lineTo(px + T * 0.75, py + T * 0.6); }
+          if (dmg > 0.65) { ctx.moveTo(px + T * 0.7, py + T * 0.2); ctx.lineTo(px + T * 0.55, py + T * 0.8); }
+          ctx.stroke();
+        }
+        // 深部の暗さ（ランプ範囲外）
+        var dark = darknessAt(x, y);
+        if (dark > 0) { ctx.fillStyle = "rgba(2,0,8," + dark.toFixed(2) + ")"; ctx.fillRect(px, py, T + 1, T + 1); }
+      }
+      function darknessAt(x, y) {
+        if (y <= 16) return 0;
+        var dist = Math.max(Math.abs(x - S.player.x), Math.abs(y - S.player.y));
+        var r = lampRadius();
+        var depthFactor = Math.min(0.85, (y - 16) / 90);
+        if (dist <= r) return 0;
+        return Math.min(0.88, depthFactor * Math.min(1, (dist - r) / 2.2 + 0.25));
+      }
+      function drawPlayer(px, py, T) {
+        var cx = px + T / 2, cy = py + T / 2, R = T * 0.4;
+        var bob = heldDir ? Math.sin(performance.now() / 60) * T * 0.03 : 0;
+        ctx.save();
+        ctx.translate(cx, cy + bob);
+        // ランプの光
+        if (S.player.y > 10) {
+          var gr = ctx.createRadialGradient(0, 0, R * 0.4, 0, 0, T * lampRadius() * 0.75);
+          gr.addColorStop(0, "rgba(255,230,150,.28)"); gr.addColorStop(1, "rgba(255,230,150,0)");
+          ctx.fillStyle = gr;
+          ctx.fillRect(-T * 3, -T * 3, T * 6, T * 6);
+        }
+        // 体（黒いクマ）
+        ctx.fillStyle = "#232323";
+        ctx.beginPath(); ctx.arc(0, R * 0.18, R * 0.92, 0, 7); ctx.fill();
+        // 耳
+        ctx.beginPath(); ctx.arc(-R * 0.62, -R * 0.42, R * 0.3, 0, 7); ctx.fill();
+        ctx.beginPath(); ctx.arc(R * 0.62, -R * 0.42, R * 0.3, 0, 7); ctx.fill();
+        // 顔
+        ctx.beginPath(); ctx.arc(0, -R * 0.08, R * 0.72, 0, 7); ctx.fill();
+        // 口まわり（白）
+        ctx.fillStyle = "#f7f2e7";
+        ctx.beginPath(); ctx.ellipse(0, R * 0.16, R * 0.4, R * 0.3, 0, 0, 7); ctx.fill();
+        // 鼻と口
+        ctx.fillStyle = "#1c1c1c";
+        ctx.beginPath(); ctx.ellipse(0, R * 0.02, R * 0.13, R * 0.09, 0, 0, 7); ctx.fill();
+        ctx.strokeStyle = "#1c1c1c"; ctx.lineWidth = Math.max(1.4, R * 0.06);
+        ctx.beginPath(); ctx.moveTo(0, R * 0.1); ctx.lineTo(0, R * 0.2);
+        ctx.moveTo(0, R * 0.2); ctx.quadraticCurveTo(-R * 0.14, R * 0.3, -R * 0.24, R * 0.2);
+        ctx.moveTo(0, R * 0.2); ctx.quadraticCurveTo(R * 0.14, R * 0.3, R * 0.24, R * 0.2); ctx.stroke();
+        // 目
+        ctx.fillStyle = "#fff";
+        ctx.beginPath(); ctx.arc(-R * 0.3, -R * 0.22, R * 0.1, 0, 7); ctx.fill();
+        ctx.beginPath(); ctx.arc(R * 0.3, -R * 0.22, R * 0.1, 0, 7); ctx.fill();
+        // ほっぺ（赤）
+        ctx.fillStyle = "#e23b3b";
+        ctx.beginPath(); ctx.ellipse(-R * 0.56, R * 0.12, R * 0.14, R * 0.19, 0, 0, 7); ctx.fill();
+        ctx.beginPath(); ctx.ellipse(R * 0.56, R * 0.12, R * 0.14, R * 0.19, 0, 0, 7); ctx.fill();
+        // ヘルメット
+        ctx.fillStyle = "#f5b921";
+        ctx.beginPath(); ctx.arc(0, -R * 0.34, R * 0.66, Math.PI, 0); ctx.fill();
+        ctx.fillRect(-R * 0.78, -R * 0.38, R * 1.56, R * 0.14);
+        // ランプ
+        ctx.fillStyle = "#fff6cf";
+        ctx.beginPath(); ctx.arc(0, -R * 0.52, R * 0.17, 0, 7); ctx.fill();
+        ctx.strokeStyle = "#b57f0e"; ctx.lineWidth = 1.6;
+        ctx.beginPath(); ctx.arc(0, -R * 0.52, R * 0.17, 0, 7); ctx.stroke();
+        ctx.restore();
+      }
+      function draw() {
+        var T = tilePx;
+        ctx.clearRect(0, 0, viewW, viewH);
+        var sx = shake > 0.2 ? (Math.random() - 0.5) * shake : 0;
+        var sy = shake > 0.2 ? (Math.random() - 0.5) * shake : 0;
+        ctx.save();
+        ctx.translate(sx, sy);
+        var groundTop = (0 - camY) * T; // y=0 の上端
+        // 空
+        var sky = ctx.createLinearGradient(0, 0, 0, Math.max(1, groundTop + T));
+        sky.addColorStop(0, "#6db3e2"); sky.addColorStop(1, "#bfe6f5");
+        ctx.fillStyle = sky;
+        ctx.fillRect(-20, -20, viewW + 40, groundTop + T + 20);
+        // 雲
+        ctx.fillStyle = "rgba(255,255,255,.85)";
+        var ct = performance.now() / 9000;
+        for (var ci = 0; ci < 3; ci++) {
+          var cloudX = ((ci * 0.37 + ct * (0.008 + ci * 0.003)) % 1.3 - 0.15) * viewW;
+          var cloudY = groundTop - T * (1.6 + ci * 0.55);
+          if (cloudY > -T) {
+            ctx.beginPath();
+            ctx.ellipse(cloudX, cloudY, T * 0.75, T * 0.24, 0, 0, 7);
+            ctx.ellipse(cloudX + T * 0.5, cloudY + T * 0.08, T * 0.55, T * 0.2, 0, 0, 7);
+            ctx.fill();
+          }
+        }
+        // 地表（y=0）
+        ctx.fillStyle = "#58a34c";
+        ctx.fillRect(-20, groundTop, viewW + 40, T * 0.34);
+        ctx.fillStyle = "#7c4b1d";
+        ctx.fillRect(-20, groundTop + T * 0.34, viewW + 40, T * 0.66);
+        ctx.fillStyle = "rgba(255,255,255,.25)";
+        for (var gx = 0; gx < COLS; gx++) ctx.fillRect(gx * T + T * 0.2, groundTop + 2, T * 0.16, 3);
+        // 売店テント（左端）
+        var tentX = 0.15 * T, tentBase = groundTop + T * 0.34, tentW = T * 2.1, tentH = T * 1.05;
+        ctx.fillStyle = "#a5672c";
+        ctx.fillRect(tentX + tentW * 0.08, tentBase - tentH * 0.55, tentW * 0.84, tentH * 0.55);
+        ctx.fillStyle = "#d2691e";
+        ctx.beginPath();
+        ctx.moveTo(tentX - 4, tentBase - tentH * 0.55);
+        ctx.lineTo(tentX + tentW / 2, tentBase - tentH);
+        ctx.lineTo(tentX + tentW + 4, tentBase - tentH * 0.55);
+        ctx.closePath(); ctx.fill();
+        ctx.fillStyle = "#fff3d6";
+        ctx.font = "800 " + Math.round(T * 0.34) + "px 'M PLUS Rounded 1c', sans-serif";
+        ctx.textAlign = "center";
+        ctx.fillText("売店", tentX + tentW / 2, tentBase - tentH * 0.12);
+        // 地下タイル
+        var yStart = Math.max(1, Math.floor(camY));
+        var yEnd = Math.min(ROWS, Math.ceil(camY + viewH / T) + 1);
+        for (var y = yStart; y <= yEnd; y++) {
+          for (var x = 0; x < COLS; x++) {
+            drawTile(x, y, x * T, (y - camY) * T, T);
+          }
+        }
+        // パーティクル
+        particles.forEach(function (p) {
+          ctx.globalAlpha = Math.max(0, 1 - p.t / p.life);
+          ctx.fillStyle = p.col;
+          if (p.spark) {
+            ctx.fillRect((p.x - camY * 0) * T - p.sz * T, (p.y - camY) * T - p.sz * T, p.sz * T * 2, p.sz * T * 2);
+          } else {
+            ctx.beginPath(); ctx.arc(p.x * T, (p.y - camY) * T, p.sz * T, 0, 7); ctx.fill();
+          }
+        });
+        ctx.globalAlpha = 1;
+        // 紙吹雪
+        confetti.forEach(function (c) {
+          ctx.save();
+          ctx.translate(c.x * T, (c.y - camY) * T);
+          ctx.rotate(c.rot);
+          ctx.fillStyle = c.col;
+          ctx.fillRect(-T * 0.09, -T * 0.05, T * 0.18, T * 0.1);
+          ctx.restore();
+        });
+        // プレイヤー
+        drawPlayer(S.player.x * T, (S.player.y - camY) * T, T);
+        // フローティングテキスト
+        floats.forEach(function (f) {
+          ctx.globalAlpha = Math.max(0, 1 - f.t / f.life);
+          ctx.font = "800 " + Math.round(T * 0.42) + "px 'M PLUS Rounded 1c', sans-serif";
+          ctx.textAlign = "center";
+          ctx.lineWidth = 4; ctx.strokeStyle = "rgba(30,15,0,.75)";
+          var fy = (f.y - camY) * T - f.t * T * 0.7;
+          ctx.strokeText(f.text, f.x * T, fy);
+          ctx.fillStyle = f.col;
+          ctx.fillText(f.text, f.x * T, fy);
+        });
+        ctx.globalAlpha = 1;
+        ctx.restore();
+
+        // 深さゲージ（右端）
+        var gx2 = viewW - 13, gTop = 14, gH = viewH - 28;
+        ctx.fillStyle = "rgba(30,16,4,.55)";
+        ctx.fillRect(gx2 - 3, gTop, 7, gH);
+        ctx.fillStyle = "rgba(255,233,189,.9)";
+        [25, 50, 75, 100].forEach(function (m) {
+          var ty = gTop + gH * (m / ROWS);
+          ctx.fillRect(gx2 - 6, ty, 13, 2);
+        });
+        var my = gTop + gH * (S.player.y / ROWS);
+        ctx.fillStyle = "#ffb03a";
+        ctx.beginPath(); ctx.arc(gx2 + 0.5, my, 5.5, 0, 7); ctx.fill();
+        ctx.strokeStyle = "#7a3c05"; ctx.lineWidth = 2; ctx.stroke();
+      }
+
+      /* ================= HUD / パネル ================= */
+      var el = function (id) { return document.getElementById(id); };
+      var lastHud = "";
+      function refreshHud() {
+        el("hudMoney").textContent = S.money.toLocaleString();
+        el("hudDepth").textContent = S.player.y;
+        el("hudMaxDepth").textContent = S.maxDepth;
+        var pct = Math.max(0, Math.round(S.energy / maxEnergy() * 100));
+        var bar = el("energyBar");
+        bar.querySelector("i").style.width = pct + "%";
+        bar.className = "bar" + (pct <= 25 ? " low" : "");
+        el("hudEnergyTxt").textContent = pct + "%";
+        el("hudPack").textContent = S.invCount;
+        el("hudPackMax").textContent = capacity();
+        el("bombCnt").textContent = S.bombs;
+        el("statDug").textContent = S.dug;
+        el("statEarned").textContent = "¥" + S.earned.toLocaleString();
+        var sec = Math.floor((Date.now() - S.startAt) / 1000);
+        el("statTime").textContent = Math.floor(sec / 60) + ":" + ("0" + (sec % 60)).slice(-2);
+        var remain = Math.max(0, ROWS - S.player.y);
+        el("depthChip").textContent = S.cleared ? "秘宝は回収済み（穴 " + S.hole + " つ目）" : "秘宝まで あと " + remain + "m";
+        var atSurface = S.player.y === 0;
+        el("shopTag").textContent = atSurface ? "営業中" : "地中…地上で開く";
+        el("shopTag").className = "tag" + (atSurface ? "" : " off");
+      }
+      function refreshInv() {
+        var body = el("invBody");
+        var rows = ORE_ORDER.filter(function (k) { return (S.inv[k] || 0) > 0; });
+        if (rows.length === 0) {
+          body.innerHTML = '<div class="inv-empty">まだ何も入っていない。掘って鉱石を集めよう。</div>';
+        } else {
+          var total = 0, html = '<ul class="inv-list">';
+          rows.forEach(function (k) {
+            var c = S.inv[k], v = c * KIND[k].value; total += v;
+            html += '<li><span class="dot" style="background:' + KIND[k].gem + '"></span>' + KIND[k].name +
+              '<span class="cnt">× ' + c + '</span><span class="yen">¥' + v.toLocaleString() + "</span></li>";
+          });
+          html += "</ul><div class='inv-total'>売値合計 ¥" + total.toLocaleString() + "（地上で自動売却）</div>";
+          body.innerHTML = html;
+        }
+        refreshHud();
+      }
+      function refreshMiles() {
+        var html = "";
+        MILES.forEach(function (m) {
+          var done = m.win ? S.cleared : S.maxDepth >= m.d;
+          html += '<li class="' + (done ? "done" : "") + '"><span class="mk">✓</span>' + m.label + "</li>";
+        });
+        el("mileList").innerHTML = html;
+      }
+
+      /* ================= ショップ ================= */
+      var SHOP = [
+        { key: "shovel", name: "シャベル強化", base: 60, growth: 1.8,
+          icon: '<svg viewBox="0 0 24 24" fill="none"><path d="M14 3l7 7-8.5 8.5a2.1 2.1 0 0 1-3-3L18 7" fill="#b9c2cc"/><path d="M13 8L4.5 16.5a2 2 0 1 0 2.8 2.8L16 11" stroke="#7a4a21" stroke-width="2.4" stroke-linecap="round"/></svg>',
+          desc: function () { return "掘る力 " + digPower().toFixed(2) + " → " + (digPower() + 0.85).toFixed(2) + "／掘る間隔も短縮"; } },
+        { key: "battery", name: "バッテリー強化", base: 50, growth: 1.7,
+          icon: '<svg viewBox="0 0 24 24" fill="none"><rect x="3" y="8" width="15" height="9" rx="2" fill="#3f9142"/><rect x="19" y="11" width="3" height="3" fill="#3f9142"/><path d="M13 9L9.5 13H12l-1 3 3.5-4H12l1-3z" fill="#ffe98a"/></svg>',
+          desc: function () { return "最大バッテリー " + maxEnergy() + " → " + (maxEnergy() + 45) + "。長く潜れる"; } },
+        { key: "pack", name: "リュック強化", base: 50, growth: 1.65,
+          icon: '<svg viewBox="0 0 24 24" fill="none"><path d="M6 8a6 6 0 0 1 12 0v11a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2V8z" fill="#c9562f"/><path d="M9 8V6a3 3 0 0 1 6 0v2" stroke="#7a4a21" stroke-width="2.2"/><rect x="9" y="12" width="6" height="5" rx="1.4" fill="#f0c987"/></svg>',
+          desc: function () { return "容量 " + capacity() + " → " + (capacity() + 8) + " 個まで持てる"; } },
+        { key: "lamp", name: "ランプ強化", base: 45, growth: 1.7,
+          icon: '<svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="13" r="5.5" fill="#ffd94d"/><path d="M12 3v3M4.9 6.9l2.1 2.1M19.1 6.9L17 9" stroke="#c9930a" stroke-width="2.2" stroke-linecap="round"/></svg>',
+          desc: function () { return "深部の見える範囲が広がる（現在 半径 " + lampRadius().toFixed(1) + " マス）"; } },
+        { key: "boots", name: "ブーツ強化", base: 55, growth: 1.75,
+          icon: '<svg viewBox="0 0 24 24" fill="none"><path d="M5 4v9l-1 5h9v-3H9V4H5z" fill="#7a4a21"/><path d="M3 18h11v3H3z" fill="#4a2f18"/></svg>',
+          desc: function () { return "移動と掘りが速くなる"; } }
+      ];
+      function shopCost(item) { return Math.round(item.base * Math.pow(item.growth, S.lv[item.key] - 1)); }
+      function refreshShop() {
+        var atSurface = S.player.y === 0;
+        var html = "";
+        SHOP.forEach(function (item) {
+          var lv = S.lv[item.key], maxed = lv >= 10, cost = shopCost(item);
+          var dis = !atSurface || maxed || S.money < cost;
+          html += '<div class="shop-item"><div class="ic">' + item.icon + '</div>' +
+            '<div class="info"><div class="nm">' + item.name + '<span class="lv">Lv.' + lv + "</span></div>" +
+            '<div class="ds">' + (maxed ? "最大レベル到達！" : item.desc()) + "</div></div>" +
+            '<button class="buy-btn" data-buy="' + item.key + '"' + (dis ? " disabled" : "") + ">" +
+            (maxed ? "MAX" : "¥" + cost.toLocaleString()) + "</button></div>";
+        });
+        var bombCost = 25;
+        var bombDis = !atSurface || S.money < bombCost || S.bombs >= 5;
+        html += '<div class="shop-item"><div class="ic"><svg viewBox="0 0 24 24" fill="none"><circle cx="10" cy="14" r="6.5" fill="#333"/><path d="M14 8c1-2 3-3 5-3" stroke="#c9930a" stroke-width="2.2" stroke-linecap="round"/><path d="M19 2l.7 1.8L21.5 4.5l-1.8.7L19 7l-.7-1.8L16.5 4.5l1.8-.7L19 2z" fill="#e07f2a"/></svg></div>' +
+          '<div class="info"><div class="nm">ダイナマイト<span class="lv">所持 ' + S.bombs + " / 5</span></div>" +
+          '<div class="ds">周囲3×3を一気に吹き飛ばす（Bキー / ボタン）</div></div>' +
+          '<button class="buy-btn" data-buy="bomb"' + (bombDis ? " disabled" : "") + ">¥" + bombCost + "</button></div>";
+        el("shopList").innerHTML = html;
+        el("shopList").querySelectorAll("[data-buy]").forEach(function (btn) {
+          btn.addEventListener("click", function () { buy(btn.getAttribute("data-buy")); });
+        });
+        refreshHud();
+      }
+      function buy(key) {
+        if (S.player.y !== 0) { toast("ショップは地上でのみ使えるよ", true); return; }
+        if (key === "bomb") {
+          if (S.bombs >= 5 || S.money < 25) return;
+          S.money -= 25; S.bombs++;
+          toast("ダイナマイトを買った（所持 " + S.bombs + "）"); sndBuy();
+        } else {
+          var item = SHOP.filter(function (i) { return i.key === key; })[0];
+          var cost = shopCost(item);
+          if (S.lv[key] >= 10 || S.money < cost) return;
+          S.money -= cost; S.lv[key]++;
+          if (key === "battery") S.energy = maxEnergy();
+          toast(item.name + " → Lv." + S.lv[key] + "！"); sndBuy();
+        }
+        refreshShop();
+      }
+
+      /* ================= メインループ ================= */
+      var actTimer = 9999, lastTs = 0, warnAt = 0;
+      function animate(ts) {
+        requestAnimationFrame(animate);
+        var dt = Math.min(100, ts - (lastTs || ts)); lastTs = ts;
+
+        // 地中での自然消耗
+        if (S.player.y >= 1 && S.energy > 0) {
+          S.energy -= dt / 1000 * 0.55;
+          if (S.energy <= 0) { S.energy = 0; rescue(); }
+          if (S.energy / maxEnergy() <= 0.12 && ts - warnAt > 2600) {
+            warnAt = ts; sndWarn();
+            toast("バッテリー残りわずか！地上へ戻ろう", true);
+          }
+        }
+        // 行動
+        if (heldDir) {
+          actTimer += dt;
+          var d = DIRS[heldDir];
+          var tx = S.player.x + d[0], ty = S.player.y + d[1];
+          var target = (ty >= 1 && ty <= ROWS && tx >= 0 && tx < COLS) ? grid[ty][tx] : null;
+          var interval = target ? digDelay() : moveDelay();
+          if (actTimer >= interval) { actTimer = 0; step(heldDir); }
+        }
+        // カメラ
+        var want = Math.max(-1.3, Math.min(ROWS - viewH / tilePx + 1.5, S.player.y - viewH / tilePx * 0.42));
+        camY += (want - camY) * Math.min(1, dt / 90);
+        // パーティクル更新
+        particles = particles.filter(function (p) {
+          p.t += dt / 1000; p.x += p.vx * dt / 1000; p.y += p.vy * dt / 1000;
+          if (!p.spark) p.vy += 6 * dt / 1000;
+          return p.t < p.life;
+        });
+        floats = floats.filter(function (f) { f.t += dt / 1000; return f.t < f.life; });
+        confetti = confetti.filter(function (c) {
+          c.t += dt / 1000; c.x += c.vx * dt / 1000; c.y += c.vy * dt / 1000; c.rot += c.vr * dt / 1000;
+          return c.t < c.life;
+        });
+        if (shake > 0.2) shake *= Math.pow(0.0015, dt / 1000); else shake = 0;
+        draw();
+        refreshHud();
+      }
+
+      /* ================= リサイズ ================= */
+      function fit() {
+        var stage = el("stage");
+        var w = stage.clientWidth;
+        var h = window.innerWidth < 700 ? 500 : 580;
+        var dpr = Math.min(2, window.devicePixelRatio || 1);
+        canvas.width = Math.round(w * dpr);
+        canvas.height = Math.round(h * dpr);
+        canvas.style.height = h + "px";
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+        viewW = w; viewH = h;
+        tilePx = w / COLS;
+      }
+      window.addEventListener("resize", fit);
+
+      /* ================= ボタン類 ================= */
+      el("soundBtn").addEventListener("click", function () {
+        soundOn = !soundOn;
+        this.textContent = soundOn ? "サウンド ON" : "サウンド OFF";
+        if (soundOn) sndBuy();
+      });
+      el("restartBtn").addEventListener("click", function () {
+        if (S.money > 0 || S.dug > 0) {
+          if (!armRestart()) return;
+        }
+        startGame(12345);
+        toast("新しい穴掘りスタート！");
+      });
+      function armRestart() {
+        // ダイアログは使えない環境のため、2度押し式にする
+        var b = el("restartBtn");
+        if (b.dataset.armed === "1") { b.dataset.armed = ""; b.textContent = "最初から"; return true; }
+        b.dataset.armed = "1"; b.textContent = "本当に最初から？";
+        setTimeout(function () { b.dataset.armed = ""; b.textContent = "最初から"; }, 2600);
+        return false;
+      }
+      el("winContinue").addEventListener("click", function () {
+        el("winOverlay").classList.remove("show");
+      });
+      el("winNewHole").addEventListener("click", function () {
+        el("winOverlay").classList.remove("show");
+        S.hole++; S.hardMul = 1 + (S.hole - 1) * 0.35;
+        S.cleared = false; S.milesHit = {};
+        S.player.x = CENTER; S.player.y = 0;
+        S.inv = {}; S.invCount = 0; S.energy = maxEnergy();
+        genWorld(); camY = -1.3;
+        refreshShop(); refreshInv(); refreshMiles();
+        toast("新しい穴 " + S.hole + " つ目スタート！岩が少し硬くなった");
+      });
+
+      /* ================= 開始 ================= */
+      function startGame(seed) {
+        S = freshState(seed);
+        genWorld();
+        camY = -1.3; heldDir = null;
+        particles = []; floats = []; confetti = [];
+        refreshShop(); refreshInv(); refreshMiles(); refreshHud();
+      }
+      fit();
+      startGame(12345);
+      requestAnimationFrame(animate);
+      setTimeout(function () { toast("掘って掘って、最深部のお宝を目指そう！"); }, 400);
+    </script>
+  </body>
+</html>

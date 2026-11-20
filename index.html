@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ゲームポータル</title>
+<style>
+  :root { color-scheme: light dark; }
+  body { font-family: sans-serif; margin: 0; padding: 24px 16px; line-height: 1.6; }
+  main { max-width: 640px; margin: 0 auto; }
+  h1 { font-size: 1.5rem; margin: 0 0 4px; }
+  p.lead { margin: 0 0 20px; opacity: 0.8; }
+  ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 12px; }
+  li a { display: block; padding: 16px; border: 1px solid rgba(128,128,128,0.4); border-radius: 12px; text-decoration: none; color: inherit; }
+  li a:hover { border-color: rgba(128,128,128,0.9); }
+  .title { font-weight: bold; font-size: 1.1rem; display: block; }
+  .desc { opacity: 0.8; font-size: 0.95rem; }
+</style>
+</head>
+<body>
+<main>
+  <h1>ゲームポータル</h1>
+  <p class="lead">作ったゲームの一覧です。タップで遊べます。</p>
+  <ul>
+    <li><a href="2048.html"><span class="title">2048ゲーム</span><span class="desc">数字タイルを合体させて2048を目指すパズル（全部入り版）</span></a></li>
+    <li><a href="suika.html"><span class="title">スイカ系落下マージ</span><span class="desc">フルーツを落として合体させ、スイカを目指す物理パズル</span></a></li>
+    <li><a href="block-breaker.html"><span class="title">ブロック崩し×ボール合体</span><span class="desc">ボールを打ち返してブロックを壊し、合体で進化させるローグライク</span></a></li>
+    <li><a href="digging.html"><span class="title">穴掘りゲーム</span><span class="desc">掘って鉱石を売って装備を強化し、最深部を目指す</span></a></li>
+  </ul>
+</main>
+</body>
+</html>
